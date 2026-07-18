@@ -476,7 +476,7 @@ body.lightsout .neon-shop .flick{
 .card .label .no{color:var(--neon)}
 .card.front .label{opacity:1}
 .card.front img.tee{
-  filter:url(#cloth) drop-shadow(0 26px 26px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(53,224,105,.25));
+  filter:drop-shadow(0 26px 26px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(53,224,105,.25));
 }
 .heart{
   position:fixed;z-index:120;pointer-events:none;font-size:1.6rem;
@@ -643,7 +643,6 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
 @media (prefers-reduced-motion:reduce){
   .tubelight,.scroll-hint,.logo-card,.neonsign,.dust,.neon-shop .flick,.neon-shop .dead{animation:none}
   html{scroll-behavior:auto}
-  .card.front img.tee{filter:drop-shadow(0 26px 26px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(53,224,105,.25))}
   #lightbox img{filter:drop-shadow(0 40px 60px rgba(0,0,0,.8))}
 }
 </style>
@@ -653,10 +652,7 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
 <!-- animated cloth-flow filter: turbulence displacement over the fabric -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <filter id="cloth" x="-15%" y="-15%" width="130%" height="130%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.011 0.019" numOctaves="2" seed="7" result="wave">
-      <animate attributeName="baseFrequency" dur="8s"
-        values="0.011 0.019;0.015 0.023;0.011 0.019" repeatCount="indefinite"/>
-    </feTurbulence>
+    <feTurbulence type="fractalNoise" baseFrequency="0.011 0.019" numOctaves="2" seed="7" result="wave"/>
     <feDisplacementMap in="SourceGraphic" in2="wave" scale="9" xChannelSelector="R" yChannelSelector="G"/>
   </filter>
 </svg>
@@ -922,7 +918,7 @@ DESIGNS.forEach((d, i) => {
   c.dataset.i = i;
   c.innerHTML = `<div class="swing">
       ${HANGER_SVG}
-      <img class="tee" src="${d.src}" alt="${d.name} t-shirt design" draggable="false">
+      <img class="tee" src="${d.src}" alt="${d.name} t-shirt design" draggable="false" decoding="async">
       <div class="label"><span class="no">Design ${String(i+1).padStart(2,'0')}</span></div>
     </div>`;
   c.style.transform = `rotateY(${i*step}deg) translateZ(${RADIUS}px)`;
@@ -1010,7 +1006,13 @@ function render(now){
     rail.classList.toggle('glow', Math.abs(velocity) > 1.2);
   }
 }
+let stageVisible = true;
+if ('IntersectionObserver' in window){
+  new IntersectionObserver(entries=>{ stageVisible = entries[0].isIntersecting; }, {rootMargin:'120px'})
+    .observe(stage);
+}
 function tick(now){
+  if (!stageVisible && !dragging){ requestAnimationFrame(tick); return; }
   if (!dragging){
     if (Math.abs(velocity) > 0.02){
       angle += velocity; velocity *= 0.955;
