@@ -940,16 +940,11 @@ DESIGNS.forEach((d, i) => {
   c.style.transform = `rotateY(${i*step}deg) translateZ(${RADIUS}px)`;
   ring.appendChild(c);
   swings.push({ el: c.querySelector('.swing'), phase: Math.random()*Math.PI*2 });
-
-  let lastTap = 0;
-  c.addEventListener('click', (e) => {
-    if (Math.abs(dragDist) > 8) return;
-    const now = performance.now();
-    if (now - lastTap < 320){ likeBurst(e.clientX, e.clientY); lastTap = 0; return; }
-    lastTap = now;
-    setTimeout(()=>{ if(lastTap && performance.now()-lastTap >= 320){ openLB(i); lastTap = 0; } }, 330);
-  });
 });
+/* tap-to-open / double-tap-to-like is handled on the stage's pointerup
+   (see below): the stage captures the pointer while dragging, which makes
+   the browser fire `click` on the stage instead of the card, so a per-card
+   click listener never runs with a mouse. */
 
 function positionRail(){
   const size = RADIUS * 2 + 6;               /* rod passes through the hooks */
@@ -985,6 +980,7 @@ for(let i=0;i<14;i++){
 /* ================= SPIN PHYSICS + PENDULUM ================= */
 let angle = 0, velocity = 0, autoSpin = !reduceMotion, dragging = false;
 let lastX = 0, dragDist = 0, lastT = 0, lastFront = -1, t0 = performance.now();
+let lastTap = 0;
 
 const counter = document.getElementById('counter');
 const dotsWrap = document.getElementById('dots');
@@ -1064,10 +1060,21 @@ stage.addEventListener('pointermove', e=>{
   velocity = dx * 0.25 * (16 / Math.max(1, now - lastT));
   lastX = e.clientX; lastT = now;
 });
-['pointerup','pointercancel'].forEach(ev=>stage.addEventListener(ev, ()=>{
+['pointerup','pointercancel'].forEach(ev=>stage.addEventListener(ev, e=>{
   if (dragging && Math.abs(velocity) > 0.6) buzz([6,20,6]);
+  const wasDragging = dragging;
   dragging = false;
   stage.classList.remove('grabbing');
+  /* treat a stationary release as a tap on whatever card is under it */
+  if (ev !== 'pointerup' || !wasDragging || Math.abs(dragDist) > 8) return;
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  const card = hit && hit.closest && hit.closest('.card');
+  if (!card) return;
+  const i = +card.dataset.i;
+  const now = performance.now();
+  if (now - lastTap < 320){ likeBurst(e.clientX, e.clientY); lastTap = 0; return; }
+  lastTap = now;
+  setTimeout(()=>{ if(lastTap && performance.now()-lastTap >= 320){ openLB(i); lastTap = 0; } }, 330);
 }));
 
 /* wheel — only hijack horizontal scrolling so the page can still scroll vertically */
