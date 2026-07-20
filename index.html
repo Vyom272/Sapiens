@@ -466,12 +466,6 @@ body.lightsout .neon-shop .flick{
   margin-left:calc(var(--cw)/-2);margin-top:calc(var(--cw)*-.67);
   transform-style:preserve-3d;backface-visibility:hidden;cursor:pointer;
 }
-/* cards on the far side of the ring: keep them visible (a full-looking
-   shop) but render them cheaply — no shadow filter, no breeze animation,
-   and counter-flipped so the designs read correctly instead of mirrored */
-.card.away img.tee{filter:none;backface-visibility:visible}
-.card.away .swing{transform:scaleX(-1)}
-.card.away .label{display:none}
 .swing{
   width:100%;height:100%;position:relative;
   transform-origin:50% calc(var(--cw)*0.035 + 4px);  /* pendulum pivot = hook on the rod */
@@ -968,9 +962,8 @@ function relayout(){
 window.addEventListener('resize', relayout);
 positionRail();
 
-/* dust motes in the shop (fewer on phones — each is a composited layer) */
-const DUST_N = matchMedia('(max-width:640px)').matches ? 7 : 14;
-for(let i=0;i<DUST_N;i++){
+/* dust motes in the shop */
+for(let i=0;i<14;i++){
   const m = document.createElement('span');
   m.className='dust';
   const s = 2+Math.random()*3;
@@ -988,7 +981,6 @@ for(let i=0;i<DUST_N;i++){
 let angle = 0, velocity = 0, autoSpin = !reduceMotion, dragging = false;
 let lastX = 0, dragDist = 0, lastT = 0, lastFront = -1, t0 = performance.now();
 let lastTap = 0;
-const awayFlags = new Array(N).fill(0);
 
 const counter = document.getElementById('counter');
 const dotsWrap = document.getElementById('dots');
@@ -1012,23 +1004,14 @@ function render(now){
     lastFront = f;
     if (!firstRender){ buzz(5); clack(0.14 + Math.min(0.15, Math.abs(velocity)*0.04)); }
     dots.forEach((d,i)=>d.classList.toggle('on', i===f));
-    [...ring.children].forEach((c,i)=>{
-      c.classList.toggle('front', i===f);
-      const d = Math.abs(i - f), ds = Math.min(d, N - d);
-      awayFlags[i] = ds * step > 100 ? 1 : 0;
-      c.classList.toggle('away', !!awayFlags[i]);
-      /* clear the inline breeze transform so the CSS counter-flip applies */
-      if (awayFlags[i]) swings[i].el.style.transform = '';
-    });
+    [...ring.children].forEach((c,i)=>c.classList.toggle('front', i===f));
     counter.textContent = String(f+1).padStart(2,'0') + ' / ' + N;
   }
   /* hangers: base breeze + swing driven by rack momentum */
   if (!reduceMotion){
     const sway = Math.max(-14, Math.min(14, velocity * 9));
     const t = now/1000;
-    for (let i = 0; i < swings.length; i++){
-      if (awayFlags[i]) continue;              /* hidden — skip the write */
-      const s = swings[i];
+    for (const s of swings){
       const a = Math.sin(t*1.4 + s.phase) * 1.5 + sway;
       s.el.style.transform = `rotateZ(${a}deg)`;
     }
