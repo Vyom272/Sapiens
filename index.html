@@ -466,9 +466,12 @@ body.lightsout .neon-shop .flick{
   margin-left:calc(var(--cw)/-2);margin-top:calc(var(--cw)*-.67);
   transform-style:preserve-3d;backface-visibility:hidden;cursor:pointer;
 }
-/* cards on the far side of the ring face away (backface-hidden = invisible
-   anyway) — drop them from compositing entirely to halve GPU layer work */
-.card.away{visibility:hidden}
+/* cards on the far side of the ring: keep them visible (a full-looking
+   shop) but render them cheaply — no shadow filter, no breeze animation,
+   and counter-flipped so the designs read correctly instead of mirrored */
+.card.away img.tee{filter:none;backface-visibility:visible}
+.card.away .swing{transform:scaleX(-1)}
+.card.away .label{display:none}
 .swing{
   width:100%;height:100%;position:relative;
   transform-origin:50% calc(var(--cw)*0.035 + 4px);  /* pendulum pivot = hook on the rod */
@@ -1014,6 +1017,8 @@ function render(now){
       const d = Math.abs(i - f), ds = Math.min(d, N - d);
       awayFlags[i] = ds * step > 100 ? 1 : 0;
       c.classList.toggle('away', !!awayFlags[i]);
+      /* clear the inline breeze transform so the CSS counter-flip applies */
+      if (awayFlags[i]) swings[i].el.style.transform = '';
     });
     counter.textContent = String(f+1).padStart(2,'0') + ' / ' + N;
   }
