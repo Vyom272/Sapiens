@@ -463,6 +463,12 @@ body.lightsout .neon-shop .flick{
   z-index:1;pointer-events:none;overflow:visible;
 }
 .rod.glow path{filter:brightness(1.18)}
+.rod .tagswing{
+  animation:rodtag 4.5s ease-in-out infinite alternate;
+  transform-box:fill-box;transform-origin:50% 0;
+}
+@keyframes rodtag{from{transform:rotate(-5deg)}to{transform:rotate(5deg)}}
+@media (prefers-reduced-motion:reduce){.rod .tagswing{animation:none}}
 
 /* ring & hanging cards */
 .ring{
@@ -795,8 +801,10 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
       <path id="rodsup" fill="none" stroke="url(#supgrad)" stroke-linecap="round"/>
       <path id="rodpath" fill="none" stroke="url(#rodgrad)" stroke-linecap="round"/>
       <path id="rodhi" fill="none" stroke="rgba(255,250,228,.38)" stroke-linecap="round"/>
+      <path id="rodneon" fill="none" stroke="rgba(53,224,105,.22)" stroke-linecap="round"/>
       <path id="rodticks" fill="none" stroke="#3d382b" stroke-linecap="round" opacity=".75"/>
       <g id="rodcollars"></g>
+      <g id="roddeco"></g>
     </svg>
     <div class="ring" id="ring"></div>
   </div>
@@ -1015,17 +1023,18 @@ function rodPath(thetaFrom, thetaTo, yOff){
   }
   return parts.join(' ');
 }
-function rodPoints(thetaFrom, thetaTo){
+function projHook(tDeg){
   const w = stage.clientWidth, h = stage.clientHeight;
   const p = 1400, ox = w/2, oy = h*0.4;
   const hookY = h/2 - CW*0.643;
+  const th = tDeg*Math.PI/180;
+  const z = RADIUS*(Math.cos(th) - 1);
+  const s = p/(p - z);
+  return { x: ox + RADIUS*Math.sin(th)*s, y: oy + (hookY - oy)*s };
+}
+function rodPoints(thetaFrom, thetaTo){
   const pts = [];
-  for(let t = thetaFrom; t <= thetaTo; t += 6){
-    const th = t*Math.PI/180;
-    const z = RADIUS*(Math.cos(th) - 1);
-    const s = p/(p - z);
-    pts.push({ x: ox + RADIUS*Math.sin(th)*s, y: oy + (hookY - oy)*s });
-  }
+  for(let t = thetaFrom; t <= thetaTo; t += 6) pts.push(projHook(t));
   return pts;
 }
 function positionRail(){
@@ -1054,13 +1063,46 @@ function positionRail(){
   set('rodticksB', { d: ptsB.filter((q,i)=>i%4===2).map(q=>tick(q, sw*0.42)).join(''), 'stroke-width': 2 });
 
   /* vertical drop-supports from the wall top, with collars where they grip */
-  const near = tx => ptsF.reduce((a,q)=>Math.abs(q.x-tx)<Math.abs(a.x-tx)?q:a);
+  /* fine-grained samples so decorations land where intended on any width */
+  const fine = []; for(let t = -90; t <= 90; t += 1) fine.push(projHook(t));
+  const near = tx => fine.reduce((a,q)=>Math.abs(q.x-tx)<Math.abs(a.x-tx)?q:a);
   const sup = [near(w*0.2), near(w*0.8)];
   set('rodsup', { d: sup.map(q=>`M${q.x.toFixed(1)} 0 L${q.x.toFixed(1)} ${q.y.toFixed(1)} `).join(''),
                   'stroke-width': Math.max(4, Math.round(sw*0.38)) });
   document.getElementById('rodcollars').innerHTML = sup.map(q=>
     `<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="${(sw*0.62).toFixed(1)}"
-       fill="#46402f" stroke="rgba(255,250,225,.28)" stroke-width="1.4"/>`).join('');
+       fill="#46402f" stroke="rgba(255,250,225,.28)" stroke-width="1.4"/>
+     <circle cx="${(q.x - sw*0.2).toFixed(1)}" cy="${(q.y - sw*0.2).toFixed(1)}" r="1.5" fill="#9a9078"/>`).join('');
+
+  /* neon-sign reflection on the rail */
+  set('rodneon', { d: rodPoints(-18, 18).map((q,i)=>(i?'L':'M')+q.x.toFixed(1)+' '+q.y.toFixed(1)).join(' '),
+                   'stroke-width': Math.round(sw*0.55) });
+
+  /* decorations: wall plates over the supports, spare slide-rings, SALE tag */
+  const deco = [];
+  for (const q of sup){
+    deco.push(`<rect x="${(q.x - sw*0.9).toFixed(1)}" y="0" width="${(sw*1.8).toFixed(1)}" height="5" rx="2" fill="#3a3527"/>`);
+    deco.push(`<circle cx="${(q.x - sw*0.55).toFixed(1)}" cy="2.5" r="1.6" fill="#8a8168"/>`);
+    deco.push(`<circle cx="${(q.x + sw*0.55).toFixed(1)}" cy="2.5" r="1.6" fill="#8a8168"/>`);
+  }
+  for (const fx of [0.05, 0.09, 0.95]){
+    const q = near(w*fx);
+    deco.push(`<ellipse cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" rx="${(sw*0.33).toFixed(1)}" ry="${(sw*0.85).toFixed(1)}"
+      fill="none" stroke="url(#hookmetal)" stroke-width="2.4"/>`);
+  }
+  const qt = near(w * (w < 640 ? 0.66 : 0.72));
+  const tw = CW*0.11, th2 = CW*0.13, sl = CW*0.16;
+  deco.push(`<g transform="translate(${qt.x.toFixed(1)} ${qt.y.toFixed(1)})"><g class="tagswing">
+    <line x1="0" y1="0" x2="0" y2="${sl.toFixed(1)}" stroke="rgba(230,220,190,.55)" stroke-width="1.2"/>
+    <g transform="translate(0 ${sl.toFixed(1)}) rotate(6)">
+      <rect x="${(-tw/2).toFixed(1)}" y="0" width="${tw.toFixed(1)}" height="${th2.toFixed(1)}" rx="3"
+        fill="#d8c9a3" stroke="#8f8261" stroke-width="1"/>
+      <circle cx="0" cy="4" r="1.8" fill="#463f2c"/>
+      <text x="0" y="${(th2*0.72).toFixed(1)}" text-anchor="middle"
+        font-family="'Space Mono',monospace" font-size="${Math.max(7, Math.round(CW*0.042))}" fill="#2a2417">SALE</text>
+    </g>
+  </g></g>`);
+  document.getElementById('roddeco').innerHTML = deco.join('');
 }
 function relayout(){
   CW = cardWidth();
