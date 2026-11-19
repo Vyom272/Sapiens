@@ -1004,7 +1004,17 @@ const N = DESIGNS.length;
 const step = 360 / N;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function cardWidth(){ return Math.min(300, Math.max(175, window.innerWidth * 0.24)); }
+/* shirt size comes from the width AND the room under the neon sign: the
+   stage is 76vh tall, so on wide-but-short windows (most laptops) width
+   alone would push the hangers and rod up into the sign */
+const neonSign = stage.querySelector('.neon-shop');
+function cardWidth(){
+  const byWidth = Math.min(300, Math.max(175, window.innerWidth * 0.24));
+  const signBottom = neonSign.offsetTop + neonSign.offsetHeight;
+  /* hanger hook tops sit ~0.665 card-widths above the stage's middle */
+  const byHeight = (stage.clientHeight / 2 - signBottom - 18) / 0.665;
+  return Math.round(Math.max(130, Math.min(byWidth, byHeight)));
+}
 let CW = cardWidth();
 let RADIUS = Math.round((CW * 1.14) / Math.tan(Math.PI / N));
 document.documentElement.style.setProperty('--cw', CW + 'px');
@@ -1136,6 +1146,8 @@ function relayout(){
 }
 window.addEventListener('resize', relayout);
 positionRail();
+/* the sign's height changes once its display font arrives */
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
 
 /* dust motes in the shop */
 for(let i=0;i<14;i++){
