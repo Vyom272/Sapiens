@@ -111,6 +111,37 @@ details b{color:var(--ink);font-weight:500}
 .sides button:hover{border-color:var(--sage);color:var(--ink)}
 .sides button.del:hover{border-color:var(--clay);color:var(--clay)}
 .badge.t{color:#8ec5ff;border:1px solid rgba(142,197,255,.55)}
+
+/* ---- back-side editor ---- */
+.modal{
+  position:fixed;inset:0;z-index:50;background:rgba(5,6,4,.84);backdrop-filter:blur(6px);
+  display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:1.5rem 1rem;
+}
+.modal-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.4rem;max-width:940px;width:100%}
+.cmp{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:.9rem 0 1.1rem}
+.cmp figure{text-align:center;min-width:0}
+.cmp figcaption{font-family:'Space Mono',monospace;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:.45rem}
+.pane{
+  position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%, #3a2a22, #1a1310 75%);
+}
+.pane img,.pane canvas{position:absolute;left:6%;top:6%;width:88%;height:88%;object-fit:contain;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5))}
+.pane .ghost{opacity:.3;filter:grayscale(1)}
+.turnpane{perspective:700px}
+.turner{position:absolute;inset:0;transform-style:preserve-3d;animation:beturn 5s ease-in-out infinite}
+.turner img{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+#beTurnB{transform:rotateY(180deg)}
+@keyframes beturn{0%,28%{transform:rotateY(0)}44%,76%{transform:rotateY(180deg)}92%,100%{transform:rotateY(360deg)}}
+.ctl .check{margin-top:.55rem}
+.ctl .check input:disabled + span{opacity:.45}
+.slider{display:flex;align-items:center;gap:.6rem;margin:.35rem 0 .2rem 1.7rem;font-size:.75rem;color:var(--dim);max-width:420px}
+.slider input{flex:1;accent-color:var(--neon)}
+#beNote{margin-top:.9rem;min-height:1.5em}
+.warn{color:#f0b35a}
+@media (max-width:620px){
+  .cmp{grid-template-columns:1fr 1fr}
+  .cmp figure:last-child{grid-column:1 / -1;width:62%;justify-self:center}
+}
 .badges{position:absolute;top:.9rem;left:.9rem;right:.9rem;display:flex;gap:.3rem;flex-wrap:wrap;z-index:2;pointer-events:none}
 .badge{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.18rem .45rem;border-radius:999px;background:rgba(8,9,7,.85)}
 .badge.n{color:var(--neon);border:1px solid rgba(53,224,105,.6)}
@@ -210,6 +241,31 @@ details b{color:var(--ink);font-weight:500}
     </div>
   </section>
 </main>
+
+<!-- ============ BACK-SIDE EDITOR ============ -->
+<div id="be" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="beTitle">
+  <div class="modal-card">
+    <span class="tag">Back side</span>
+    <h2 id="beTitle" style="margin-top:.4rem">Back</h2>
+    <div class="cmp">
+      <figure><div class="pane"><img id="beFront" alt="Front of the shirt"></div><figcaption>Front</figcaption></figure>
+      <figure><div class="pane"><img id="beGhost" class="ghost" alt=""><canvas id="beBack" aria-label="Prepared back of the shirt"></canvas></div><figcaption>Back</figcaption></figure>
+      <figure><div class="pane turnpane"><div class="turner"><img id="beTurnF" alt=""><img id="beTurnB" alt=""></div></div><figcaption>How it turns</figcaption></figure>
+    </div>
+    <div class="ctl">
+      <label class="check"><input type="checkbox" id="beRemove"><span>Remove the background</span></label>
+      <div class="slider" id="beStrengthRow"><span>Gentle</span><input type="range" id="beStrength" min="4" max="45" step="1" aria-label="Background removal strength"><span>Strong</span></div>
+      <label class="check"><input type="checkbox" id="beFit"><span>Match the front's size &amp; position</span></label>
+      <label class="check"><input type="checkbox" id="beTone"><span>Match the front's colour &amp; lighting</span></label>
+      <label class="check"><input type="checkbox" id="beGhostOn" checked><span>Show the front faintly behind the back</span></label>
+    </div>
+    <p class="help" id="beNote"></p>
+    <div class="row">
+      <button class="btn" id="beCancel" type="button">Cancel</button>
+      <button class="btn primary" id="beUse" type="button" disabled>Use this back</button>
+    </div>
+  </div>
+</div>
 
 <div id="bar" hidden>
   <div id="status">Loading…</div>
@@ -484,8 +540,9 @@ function render(){
     if (!it.removed){
       if (!hasBack) mkSide('+ Back side', 'Upload the back of this shirt', () => pickBack(it));
       else {
-        mkSide('Change back', 'Replace the back image', () => pickBack(it));
-        mkSide('Remove back', 'Remove the back image', () => {
+        mkSide('Edit back', 'Clean up and line up the back image', () => editBack(it));
+        mkSide('Replace', 'Upload a different back image', () => pickBack(it));
+        mkSide('Remove', 'Remove the back image', () => {
           it.backNew = null; it.backRemoved = true;
           render();
         }, 'del');
@@ -518,12 +575,353 @@ function pickBack(it){ backTarget = it; $('backFile').click(); }
 async function setBack(file){
   const it = backTarget; backTarget = null;
   if (!it || !file) return;
-  setStatus('<span class="spin"></span>Preparing the back image…');
+  it.backOpts = null;                      /* new photo: start from fresh defaults */
+  openBackEditor(it, URL.createObjectURL(file));
+}
+async function editBack(it){
+  try { openBackEditor(it, it.backNew && it.backSrc ? it.backSrc : await fileSrc(it.back)); }
+  catch(e){ setStatus(`<span style="color:var(--clay)">Couldn't load the back image (${esc(e.message)})</span>`); }
+}
+
+/* ================= back-side editor =================
+   Runs entirely in the browser. Background removal is classic region
+   growing: learn the background's colours from the edge of the photo,
+   grow inwards while pixels match (or change only gently, for gradients
+   and shadows), and stop at the shirt's outline. Works best on a plain
+   background that contrasts with the shirt. */
+const LIN = new Float32Array(256);
+for (let i = 0; i < 256; i++){ const c = i / 255; LIN[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+const labF = t => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+function rgb2lab(r, g, b){
+  const R = LIN[r], G = LIN[g], B = LIN[b];
+  const x = labF((0.4124564 * R + 0.3575761 * G + 0.1804375 * B) / 0.95047);
+  const y = labF(0.2126729 * R + 0.7151522 * G + 0.0721750 * B);
+  const z = labF((0.0193339 * R + 0.1191920 * G + 0.9503041 * B) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+function lab2rgb(L, a, b){
+  const fy = (L + 16) / 116, fx = fy + a / 500, fz = fy - b / 200;
+  const inv = t => { const t3 = t * t * t; return t3 > 0.008856 ? t3 : (t - 16 / 116) / 7.787; };
+  const X = inv(fx) * 0.95047, Y = inv(fy), Z = inv(fz) * 1.08883;
+  const lin = [3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z, -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z, 0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z];
+  return lin.map(c => { c = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(c, 0), 1 / 2.4) - 0.055; return Math.max(0, Math.min(255, Math.round(c * 255))); });
+}
+/* perceptual distance, lightness weighted down so soft shadows count as background */
+const labDist = (L1, a1, b1, L2, a2, b2) => Math.sqrt(((L1 - L2) * 0.7) ** 2 + (a1 - a2) ** 2 + (b1 - b2) ** 2);
+
+function readPixels(img, maxSide){
+  const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const W = Math.max(1, Math.round(img.naturalWidth * s)), H = Math.max(1, Math.round(img.naturalHeight * s));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, W, H);
+  return { s, W, H, data: x.getImageData(0, 0, W, H).data };
+}
+function medianLab(data, alphaMin){
+  const hL = new Uint32Array(101), hA = new Uint32Array(256), hB = new Uint32Array(256);
+  let n = 0;
+  for (let o = 0; o < data.length; o += 4){
+    if (data[o + 3] < alphaMin) continue;
+    const [L, a, b] = rgb2lab(data[o], data[o + 1], data[o + 2]);
+    hL[Math.max(0, Math.min(100, Math.round(L)))]++;
+    hA[Math.max(0, Math.min(255, Math.round(a) + 128))]++;
+    hB[Math.max(0, Math.min(255, Math.round(b) + 128))]++;
+    n++;
+  }
+  if (!n) return null;
+  const med = (h, off) => { let acc = 0; for (let i = 0; i < h.length; i++){ acc += h[i]; if (acc >= n / 2) return i - off; } return 0; };
+  return [med(hL, 0), med(hA, 128), med(hB, 128)];
+}
+
+/* where the front's shirt sits, so the back can be laid over it exactly */
+async function frontInfo(it){
+  const src = it.dataUrl || await fileSrc(it.file);
+  const img = await loadImg(src);
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const { data } = readPixels(img, Math.max(w, h));
+  let minX = w, minY = h, maxX = -1, maxY = -1, cut = false;
+  for (let i = 0, o = 3; o < data.length; i++, o += 4){
+    const a = data[o];
+    if (a < 250) cut = true;
+    if (a > 10){ const x = i % w, y = (i / w) | 0; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  return { src, w, h, cut, box: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }, med: medianLab(data, 218) };
+}
+async function fileSrc(file){
+  if (thumbCache.has(file)) return thumbCache.get(file);
+  const url = `${CFG.dir}/${file}`;
+  try { await loadImg(url); return url; } catch(e){}
+  const blob = await gh(repoPath(`/contents/${CFG.dir}/${encodeURIComponent(file)}?ref=${CFG.branch}`), { raw: true });
+  const u = URL.createObjectURL(blob); thumbCache.set(file, u); return u;
+}
+
+function kmeans(pts, k){
+  let C = [pts[(pts.length / 2) | 0]];
+  while (C.length < k){            /* farthest-point seeding */
+    let best = null, bd = -1;
+    for (const p of pts){ let d = Infinity; for (const c of C) d = Math.min(d, labDist(p[0], p[1], p[2], c[0], c[1], c[2])); if (d > bd){ bd = d; best = p; } }
+    if (bd < 3) break;
+    C.push(best.slice());
+  }
+  let assign = new Int32Array(pts.length);
+  for (let it = 0; it < 10; it++){
+    const sum = C.map(() => [0, 0, 0, 0]);
+    pts.forEach((p, i) => {
+      let bi = 0, bd = Infinity;
+      C.forEach((c, j) => { const d = labDist(p[0], p[1], p[2], c[0], c[1], c[2]); if (d < bd){ bd = d; bi = j; } });
+      assign[i] = bi; const s = sum[bi]; s[0] += p[0]; s[1] += p[1]; s[2] += p[2]; s[3]++;
+    });
+    C = C.map((c, j) => sum[j][3] ? [sum[j][0] / sum[j][3], sum[j][1] / sum[j][3], sum[j][2] / sum[j][3]] : c);
+  }
+  return C.map((c, j) => ({ lab: c, share: assign.filter(a => a === j).length / pts.length }));
+}
+
+function analyseBack(img){
+  const { s, W, H, data } = readPixels(img, 800);
+  const n = W * H;
+  const L = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n), alpha = new Uint8Array(n);
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let i = 0, o = 0; i < n; i++, o += 4){
+    const lab = rgb2lab(data[o], data[o + 1], data[o + 2]);
+    L[i] = lab[0]; A[i] = lab[1]; B[i] = lab[2]; alpha[i] = data[o + 3];
+    if (data[o + 3] > 10){ const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) throw new Error('the image is completely transparent');
+
+  /* an opaque photo has a solid frame of background around the shirt;
+     a cut-out only touches its bounding box at a few points */
+  const ring = 3, edge = [];
+  let total = 0;
+  for (let y = y0; y <= y1; y++){
+    const full = y - y0 < ring || y1 - y < ring;
+    for (let x = x0; x <= x1; x++){
+      if (!full && x - x0 >= ring && x1 - x >= ring){ x = x1 - ring; continue; }
+      total++;
+      const i = y * W + x;
+      if (alpha[i] > 250) edge.push(i);
+    }
+  }
+  const isPhoto = edge.length / total > 0.6;
+
+  let clusters = [], dbg = null, autoT = 14, bgRGB = null;
+  if (isPhoto){
+    const step = Math.max(1, Math.floor(edge.length / 4000));
+    const pts = [];
+    for (let k = 0; k < edge.length; k += step){ const i = edge[k]; pts.push([L[i], A[i], B[i]]); }
+    clusters = kmeans(pts, 3).filter(c => c.share >= 0.12);
+    dbg = new Float32Array(n);
+    for (let i = 0; i < n; i++){
+      let d = Infinity;
+      for (const c of clusters) d = Math.min(d, labDist(L[i], A[i], B[i], c.lab[0], c.lab[1], c.lab[2]));
+      dbg[i] = d;
+    }
+    let spread = 0;
+    for (const p of pts){ let d = Infinity; for (const c of clusters) d = Math.min(d, labDist(p[0], p[1], p[2], c.lab[0], c.lab[1], c.lab[2])); spread += d; }
+    spread /= pts.length;
+    autoT = Math.max(8, Math.min(32, spread * 2.5 + 7));
+    const top = clusters.reduce((a, c) => c.share > a.share ? c : a);
+    bgRGB = lab2rgb(top.lab[0], top.lab[1], top.lab[2]);
+  }
+  /* lightness edges stop the fill from creeping across the shirt's outline */
+  const grad = new Float32Array(n);
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++){
+    const i = y * W + x;
+    const gx = L[i - W + 1] + 2 * L[i + 1] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - 1] - L[i + W - 1];
+    const gy = L[i + W - 1] + 2 * L[i + W] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - W] - L[i - W + 1];
+    grad[i] = Math.hypot(gx, gy) / 4;
+  }
+  return { img, s, W, H, n, L, A, B, alpha, dbg, grad, isPhoto, autoT, bgRGB, box: { x0, y0, x1, y1 } };
+}
+
+function segment(an, T){
+  const { W, H, n, L, A, B, alpha, dbg, grad, box } = an;
+  const bg = new Uint8Array(n), q = new Int32Array(n);
+  let qh = 0, qt = 0;
+  for (let i = 0; i < n; i++) if (alpha[i] <= 10){ bg[i] = 1; q[qt++] = i; }
+  const seed = i => { if (!bg[i] && dbg[i] < T * 1.6){ bg[i] = 1; q[qt++] = i; } };
+  for (let x = box.x0; x <= box.x1; x++){ seed(box.y0 * W + x); seed(box.y1 * W + x); }
+  for (let y = box.y0; y <= box.y1; y++){ seed(y * W + box.x0); seed(y * W + box.x1); }
+  const gentle = T * 0.3, far = T * 2.4, EDGE = 9;
+  const visit = (i, j) => {
+    if (bg[j]) return;
+    const d = dbg[j];
+    if (d < T || (d < far && grad[j] < EDGE && labDist(L[i], A[i], B[i], L[j], A[j], B[j]) < gentle)){ bg[j] = 1; q[qt++] = j; }
+  };
+  while (qh < qt){
+    const i = q[qh++], x = i % W;
+    if (x > 0) visit(i, i - 1);
+    if (x < W - 1) visit(i, i + 1);
+    if (i >= W) visit(i, i - W);
+    if (i + W < n) visit(i, i + W);
+  }
+  /* keep only the largest remaining piece: the shirt (drops specks and stray objects) */
+  const comp = new Int32Array(n);
+  let label = 0, best = 0, bestSize = 0;
+  for (let i = 0; i < n; i++){
+    if (bg[i] || comp[i]) continue;
+    label++; let size = 0; qh = qt = 0; q[qt++] = i; comp[i] = label;
+    while (qh < qt){
+      const k = q[qh++], x = k % W; size++;
+      const nb = [x > 0 ? k - 1 : -1, x < W - 1 ? k + 1 : -1, k - W, k + W];
+      for (const j of nb) if (j >= 0 && j < n && !bg[j] && !comp[j]){ comp[j] = label; q[qt++] = j; }
+    }
+    if (size > bestSize){ bestSize = size; best = label; }
+  }
+  const keep = new Uint8Array(n);
+  for (let i = 0; i < n; i++) keep[i] = comp[i] === best && best ? 1 : 0;
+  /* shave one pixel off the outline: the camera blends fabric and background
+     there, and those mixed pixels would otherwise leave a coloured rim */
+  const m = new Float32Array(n);
+  for (let i = 0; i < n; i++){
+    if (!keep[i]) continue;
+    const x = i % W;
+    m[i] = (x > 0 && keep[i - 1]) && (x < W - 1 && keep[i + 1]) && (i >= W && keep[i - W]) && (i + W < n && keep[i + W]) ? 1 : 0;
+  }
+  /* feather the edge a little so it doesn't look cut out with scissors */
+  const f = new Float32Array(n);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+    let sum = 0, cnt = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){
+      const yy = y + dy, xx = x + dx;
+      if (yy >= 0 && yy < H && xx >= 0 && xx < W){ sum += m[yy * W + xx]; cnt++; }
+    }
+    f[y * W + x] = sum / cnt;
+  }
+  return f;
+}
+function alphaMask(an){ const m = new Float32Array(an.n); for (let i = 0; i < an.n; i++) m[i] = an.alpha[i] / 255; return m; }
+function maskBox(an, m){
+  let x0 = an.W, y0 = an.H, x1 = -1, y1 = -1, kept = 0;
+  for (let i = 0; i < an.n; i++) if (m[i] > 0.5){ kept++; const x = i % an.W, y = (i / an.W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, kept };
+}
+
+function composeBack(an, m, bb, front, opts){
+  const out = document.createElement('canvas'); out.width = front.w; out.height = front.h;
+  const ctx = out.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingQuality = 'high';
+  let dx, dy, dw, dh;
+  if (opts.fit){
+    /* same width and top as the front's shirt; fix small ratio differences
+       (camera angle) so the outlines match, but never distort by much */
+    const fb = front.box, sc = fb.w / bb.w;
+    dw = fb.w; dh = bb.h * sc; dx = fb.x; dy = fb.y;
+    if (Math.abs(dh - fb.h) / fb.h < 0.12) dh = fb.h;
+  } else {
+    const sc = Math.min(front.w * 0.94 / bb.w, front.h * 0.94 / bb.h);
+    dw = bb.w * sc; dh = bb.h * sc; dx = (front.w - dw) / 2; dy = (front.h - dh) / 2;
+  }
+  const k = 1 / an.s;
+  ctx.drawImage(an.img, bb.x * k, bb.y * k, bb.w * k, bb.h * k, dx, dy, dw, dh);
+  if (opts.remove){
+    const mc = document.createElement('canvas'); mc.width = an.W; mc.height = an.H;
+    const mx = mc.getContext('2d'), md = mx.createImageData(an.W, an.H);
+    for (let i = 0; i < an.n; i++){ md.data[i * 4] = md.data[i * 4 + 1] = md.data[i * 4 + 2] = 255; md.data[i * 4 + 3] = Math.round(m[i] * 255); }
+    mx.putImageData(md, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(mc, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  const id = ctx.getImageData(0, 0, out.width, out.height), d = id.data;
+  if (opts.remove && an.bgRGB){
+    /* strip the background colour that bleeds into the soft edge (halo) */
+    const bgc = an.bgRGB;
+    for (let o = 0; o < d.length; o += 4){
+      const a = d[o + 3];
+      if (a === 0 || a === 255) continue;
+      const al = Math.max(a / 255, 0.2);
+      for (let c = 0; c < 3; c++) d[o + c] = Math.max(0, Math.min(255, (d[o + c] - (1 - al) * bgc[c]) / al));
+    }
+  }
+  if (opts.tone && front.med){
+    /* move the fabric's colour and brightness toward the front's (median, so prints don't skew it) */
+    const bm = medianLab(d, 218);
+    if (bm){
+      const cl = (v, lim) => Math.max(-lim, Math.min(lim, v));
+      const dl = cl((front.med[0] - bm[0]) * 0.8, 30), da = cl((front.med[1] - bm[1]) * 0.8, 25), db = cl((front.med[2] - bm[2]) * 0.8, 25);
+      if (Math.abs(dl) + Math.abs(da) + Math.abs(db) > 1.5){
+        for (let o = 0; o < d.length; o += 4){
+          if (!d[o + 3]) continue;
+          const lab = rgb2lab(d[o], d[o + 1], d[o + 2]);
+          const rgb = lab2rgb(lab[0] + dl, lab[1] + da, lab[2] + db);
+          d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2];
+        }
+      }
+    }
+  }
+  ctx.putImageData(id, 0, 0);
+  return out;
+}
+
+const BE = { it: null, an: null, front: null, out: null, src: null, timer: 0 };
+function beNote(html){ $('beNote').innerHTML = html; }
+const BE_HELP = 'Works best when the shirt is photographed on a plain background that contrasts with it. Use the faint front to check the outline lines up.';
+async function openBackEditor(it, src){
+  $('be').hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('beTitle').textContent = `Back of “${it.name.trim() || 'new design'}”`;
+  $('beUse').disabled = true;
+  beNote('<span class="spin"></span>Analysing the photo…');
+  const ctx = $('beBack').getContext('2d'); ctx.clearRect(0, 0, $('beBack').width, $('beBack').height);
+  Object.assign(BE, { it, an: null, front: null, out: null, src });
   try {
-    it.backNew = await processImage(file);
-    it.backRemoved = false;
-    render();
-  } catch(e){ updateBar(); setStatus(`<span style="color:var(--clay)">Couldn't use ${esc(file.name)} (${esc(e.message)})</span>`); }
+    const [front, img] = await Promise.all([frontInfo(it), loadImg(src)]);
+    if (BE.it !== it) return;
+    const an = analyseBack(img);
+    Object.assign(BE, { an, front });
+    for (const id of ['beFront', 'beGhost', 'beTurnF']) $(id).src = front.src;
+    const o = it.backOpts || {};
+    $('beRemove').disabled = !an.isPhoto;
+    $('beRemove').checked = an.isPhoto && (o.remove ?? true);
+    $('beStrength').value = o.T ?? Math.round(an.autoT);
+    $('beFit').disabled = !front.cut;          /* nothing to line up with if the front has no outline */
+    $('beFit').checked = front.cut && (o.fit ?? true);
+    $('beTone').checked = o.tone ?? true;
+    beCompute();
+  } catch(e){
+    beNote(`<span style="color:var(--clay)">Couldn't read that image (${esc(e.message)}).</span>`);
+  }
+}
+function beSchedule(){ clearTimeout(BE.timer); BE.timer = setTimeout(beCompute, 70); }
+function beCompute(){
+  const { an, front } = BE;
+  if (!an) return;
+  const remove = $('beRemove').checked;
+  $('beStrength').disabled = !remove;
+  $('beStrengthRow').style.opacity = remove ? 1 : .4;
+  $('beGhost').hidden = !$('beGhostOn').checked;
+  const m = remove ? segment(an, +$('beStrength').value) : alphaMask(an);
+  const bb = maskBox(an, m);
+  if (!bb){ $('beUse').disabled = true; beNote('<span class="warn">Nothing is left — the whole image looks like background. Slide toward Gentle, or switch off background removal.</span>'); return; }
+  const out = composeBack(an, m, bb, front, { remove, fit: $('beFit').checked, tone: $('beTone').checked });
+  BE.out = out;
+  const cv = $('beBack'); cv.width = out.width; cv.height = out.height;
+  cv.getContext('2d').drawImage(out, 0, 0);
+  $('beTurnB').src = out.toDataURL('image/png');
+  $('beUse').disabled = false;
+  const visible = (an.box.x1 - an.box.x0 + 1) * (an.box.y1 - an.box.y0 + 1);
+  const keptShare = remove ? bb.kept / visible : 0;
+  if (remove && keptShare < 0.06) beNote('<span class="warn">Most of the photo was removed. If the shirt is cut into, slide toward Gentle.</span>');
+  else if (remove && keptShare > 0.9) beNote('<span class="warn">Couldn\'t find a background to remove. Is it plain and a different colour from the shirt?</span>');
+  else if (!an.isPhoto) beNote('This image already has a transparent background, so only the size, position and colour are adjusted.');
+  else beNote(BE_HELP);
+}
+function closeBackEditor(){
+  $('be').hidden = true;
+  document.body.style.overflow = '';
+  BE.it = null; BE.an = null;
+}
+function useBack(){
+  const { it, out } = BE;
+  if (!it || !out) return;
+  let dataUrl = out.toDataURL('image/webp', 0.9), ext = 'webp';
+  if (!dataUrl.startsWith('data:image/webp')){ dataUrl = out.toDataURL('image/png'); ext = 'png'; }
+  it.backNew = { dataUrl, ext, opaque: false };
+  it.backRemoved = false;
+  it.backSrc = BE.src;
+  it.backOpts = { remove: $('beRemove').checked, T: +$('beStrength').value, fit: $('beFit').checked, tone: $('beTone').checked };
+  closeBackEditor();
+  render();
 }
 function move(idx, dir){
   const j = idx + dir;
@@ -652,6 +1050,11 @@ drop.addEventListener('click', () => fileIn.click());
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileIn.click(); } });
 fileIn.addEventListener('change', () => { addFiles(fileIn.files); fileIn.value = ''; });
 $('backFile').addEventListener('change', () => { const f = $('backFile').files[0]; $('backFile').value = ''; setBack(f); });
+['beRemove', 'beFit', 'beTone', 'beGhostOn'].forEach(id => $(id).addEventListener('change', beSchedule));
+$('beStrength').addEventListener('input', beSchedule);
+$('beCancel').addEventListener('click', closeBackEditor);
+$('beUse').addEventListener('click', useBack);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('be').hidden) closeBackEditor(); });
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
