@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>SAPIENs Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230b0c0a'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%2335e069' font-family='sans-serif' font-weight='bold'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sedgwick+Ave+Display&family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --asphalt:#0b0c0a; --panel:#13150f; --line:#262a20; --sage:#8a9464; --sand:#d8c9a3;
+  --neon:#35e069; --clay:#d4675c; --ink:#e8e6dd; --dim:#9a9a8c;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--asphalt);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;
+  min-height:100vh;-webkit-font-smoothing:antialiased;padding-bottom:7rem;
+}
+.mono{font-family:'Space Mono',ui-monospace,monospace}
+.tag{font-family:'Space Mono',ui-monospace,monospace;font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;color:var(--sage)}
+a{color:var(--neon)}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,.drop:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+[hidden]{display:none !important}
+
+header{
+  display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;
+  padding:1.1rem 1.25rem;border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:baseline;gap:.8rem}
+.brand .logo{font-family:'Sedgwick Ave Display',cursive;font-size:1.6rem;color:var(--neon);text-shadow:0 0 16px rgba(53,224,105,.45);text-decoration:none}
+.who{display:flex;align-items:center;gap:.8rem;font-size:.85rem;color:var(--dim)}
+.btn{
+  background:none;border:1px solid var(--sage);color:var(--sand);border-radius:999px;
+  padding:.55rem 1.1rem;font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.08em;transition:.2s;
+}
+.btn:hover:not(:disabled){border-color:var(--neon);color:var(--neon)}
+.btn.primary{background:var(--neon);border-color:var(--neon);color:#07110a;font-weight:700}
+.btn.primary:hover:not(:disabled){filter:brightness(1.1);color:#07110a}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+main{max-width:1100px;margin:0 auto;padding:1.5rem 1.25rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.5rem}
+h1{font-family:'Sedgwick Ave Display',cursive;color:var(--sand);font-size:clamp(1.8rem,5vw,2.4rem);font-weight:400;margin:.4rem 0 .6rem}
+h2{font-size:1.05rem;font-weight:500;margin-bottom:.9rem;display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+h2 .count{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--dim);font-weight:400}
+p.help{color:var(--dim);line-height:1.65;font-size:.92rem}
+
+/* ---- login ---- */
+#login{max-width:520px;margin:3rem auto}
+.field{display:flex;flex-direction:column;gap:.45rem;margin-top:1.2rem}
+.field label{font-size:.8rem;color:var(--dim)}
+input[type=password],input[type=text]{
+  background:#0d0f0b;border:1px solid var(--line);color:var(--ink);border-radius:10px;
+  padding:.75rem .85rem;font:inherit;font-size:.95rem;width:100%;
+}
+input[type=password]{font-family:'Space Mono',monospace;font-size:.85rem}
+.check{display:flex;align-items:center;gap:.55rem;margin-top:1rem;font-size:.85rem;color:var(--dim)}
+.check input{accent-color:var(--neon);width:16px;height:16px}
+.row{display:flex;gap:.7rem;align-items:center;margin-top:1.3rem;flex-wrap:wrap}
+.err{color:var(--clay);font-size:.88rem;margin-top:1rem;line-height:1.5}
+.ok{color:var(--neon)}
+details{margin-top:1.4rem;border-top:1px solid var(--line);padding-top:1.1rem}
+summary{cursor:pointer;color:var(--sand);font-size:.9rem}
+details ol{margin:.9rem 0 0 1.2rem;color:var(--dim);line-height:1.8;font-size:.88rem}
+details b{color:var(--ink);font-weight:500}
+
+/* ---- upload ---- */
+.drop{
+  border:1.5px dashed var(--sage);border-radius:14px;padding:2rem 1rem;text-align:center;
+  color:var(--dim);cursor:pointer;transition:.2s;background:rgba(138,148,100,.04);
+}
+.drop:hover,.drop.over{border-color:var(--neon);color:var(--ink);background:rgba(53,224,105,.06)}
+.drop strong{display:block;color:var(--sand);font-weight:500;font-size:1rem;margin-bottom:.3rem}
+.drop small{display:block;margin-top:.5rem;font-size:.78rem}
+
+/* ---- rack grid ---- */
+#rackCard{margin-top:1.25rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.9rem}
+.tile{
+  position:relative;border:1px solid var(--line);border-radius:12px;padding:.6rem;background:#0f110c;
+  display:flex;flex-direction:column;gap:.5rem;transition:opacity .2s, border-color .2s;
+}
+.tile.new{border-color:rgba(53,224,105,.55)}
+.tile.removed{opacity:.38}
+.tile.removed .thumb img{filter:grayscale(1)}
+.thumb{
+  aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%, #3a2a22, #1a1310 75%);overflow:hidden;
+}
+.thumb img{max-width:92%;max-height:92%;object-fit:contain;filter:drop-shadow(0 8px 10px rgba(0,0,0,.55))}
+.badges{position:absolute;top:.9rem;left:.9rem;right:.9rem;display:flex;gap:.3rem;flex-wrap:wrap;z-index:2;pointer-events:none}
+.badge{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.18rem .45rem;border-radius:999px;background:rgba(8,9,7,.85)}
+.badge.n{color:var(--neon);border:1px solid rgba(53,224,105,.6)}
+.badge.f{color:var(--sand);border:1px solid rgba(216,201,163,.5)}
+.badge.w{color:#f0b35a;border:1px solid rgba(240,179,90,.55)}
+.tile input[type=text]{padding:.45rem .55rem;font-size:.85rem;border-radius:8px}
+.tools{display:flex;gap:.35rem}
+.tools button{
+  flex:1;background:none;border:1px solid var(--line);color:var(--dim);border-radius:8px;
+  padding:.4rem 0;font-size:.9rem;line-height:1;transition:.2s;
+}
+.tools button:hover:not(:disabled){border-color:var(--sage);color:var(--ink)}
+.tools button.del:hover{border-color:var(--clay);color:var(--clay)}
+.tools button:disabled{opacity:.3;cursor:not-allowed}
+.empty{color:var(--dim);font-size:.9rem;padding:1rem 0}
+
+/* ---- publish bar ---- */
+#bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:10;
+  background:rgba(11,12,10,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);
+  padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+}
+#status{font-size:.88rem;color:var(--dim);line-height:1.5;flex:1;min-width:220px}
+#status b{color:var(--ink);font-weight:500}
+.spin{display:inline-block;width:.8em;height:.8em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-.1em;margin-right:.35rem}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media (max-width:520px){
+  .grid{grid-template-columns:repeat(2,1fr);gap:.6rem}
+  .card{padding:1.1rem}
+  #bar .row{margin-top:0;width:100%}
+  #bar .btn{flex:1}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <a class="logo" href="./">SAPIENs</a>
+    <span class="tag">Admin</span>
+  </div>
+  <div class="who" id="who" hidden>
+    <span>Signed in as <b class="mono" id="whoName"></b></span>
+    <button class="btn" id="signOut">Sign out</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ SIGN IN ============ -->
+  <section id="login" class="card">
+    <span class="tag">Restricted</span>
+    <h1>Admin sign-in</h1>
+    <p class="help">This page manages the designs on the rack. It only works with a GitHub access token that belongs to the site owner and can write to the repository, so nobody else can change anything here.</p>
+
+    <div class="field">
+      <label for="token">GitHub access token</label>
+      <input type="password" id="token" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+    </div>
+    <label class="check"><input type="checkbox" id="remember" checked> Remember on this device</label>
+    <div class="row">
+      <button class="btn primary" id="signIn">Sign in</button>
+    </div>
+    <p class="err" id="loginErr" role="alert" hidden></p>
+
+    <details>
+      <summary>How do I get a token?</summary>
+      <ol>
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">github.com/settings/personal-access-tokens/new</a></li>
+        <li>Name it something like <b>SAPIENs admin</b> and pick an expiration.</li>
+        <li>Under <b>Repository access</b> choose <b>Only select repositories</b> → <b>Sapiens</b>.</li>
+        <li>Under <b>Permissions → Repository permissions</b> set <b>Contents</b> to <b>Read and write</b>.</li>
+        <li>Click <b>Generate token</b>, copy it, and paste it above.</li>
+      </ol>
+      <p class="help" style="margin-top:.8rem">The token is stored only in this browser and is sent only to GitHub. Anyone holding it can edit the repo, so don't share it — if it ever leaks, delete it on that same GitHub page.</p>
+    </details>
+  </section>
+
+  <!-- ============ APP ============ -->
+  <section id="app" hidden>
+    <div class="card">
+      <h2>Add designs</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose design images to upload">
+        <strong>Drop design images here, or tap to choose</strong>
+        PNG or WebP with a transparent background (just the shirt) hangs best on the rack.
+        <small>Images are trimmed and resized automatically before upload.</small>
+      </div>
+      <input type="file" id="file" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
+    </div>
+
+    <div class="card" id="rackCard">
+      <h2>On the rack <span class="count" id="count"></span></h2>
+      <p class="help" style="margin-bottom:1rem">The first design faces the front when the shop loads. Use the arrows to reorder, edit names inline, and ✕ to remove. Nothing changes on the live site until you press <b style="color:var(--ink)">Publish</b>.</p>
+      <div class="grid" id="grid"></div>
+      <p class="empty" id="empty" hidden>No designs yet — add one above.</p>
+    </div>
+  </section>
+</main>
+
+<div id="bar" hidden>
+  <div id="status">Loading…</div>
+  <div class="row" style="margin-top:0">
+    <button class="btn" id="discard" disabled>Discard changes</button>
+    <button class="btn primary" id="publish" disabled>Publish</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const CFG = { owner: 'Vyom272', repo: 'Sapiens', branch: 'main', admin: 'vyom272', dir: 'designs' };
+const API = 'https://api.github.com';
+const MAX_SIDE = 720;            /* final longest side, matches the existing rack images */
+const $ = id => document.getElementById(id);
+
+let token = null;
+let base = null;                 /* { sha, text } — manifest as last loaded from GitHub */
+let items = [];                  /* { file, name, isNew, removed, dataUrl, ext, opaque } */
+let busy = false;
+
+/* ---------------- GitHub API ---------------- */
+async function gh(path, { method = 'GET', body, raw = false, tok = token } = {}){
+  const r = await fetch(API + path, {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + tok,
+      'Accept': raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: 'no-store'
+  });
+  if (!r.ok){
+    let msg = '';
+    try { msg = (await r.json()).message || ''; } catch(e){}
+    const err = new Error(msg || ('GitHub returned ' + r.status));
+    err.status = r.status;
+    throw err;
+  }
+  if (raw) return r.blob();
+  return r.status === 204 ? null : r.json();
+}
+const repoPath = p => `/repos/${CFG.owner}/${CFG.repo}${p}`;
+
+function b64ToText(b64){
+  const bin = atob(b64.replace(/\s/g, ''));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+async function manifestAt(sha){
+  const f = await gh(repoPath(`/contents/${CFG.dir}/manifest.json?ref=${sha}`));
+  return b64ToText(f.content);
+}
+
+/* ---------------- sign in / out ---------------- */
+function storedToken(){
+  try { return localStorage.getItem('sapiens-admin-token') || sessionStorage.getItem('sapiens-admin-token'); }
+  catch(e){ return null; }
+}
+function storeToken(t, remember){
+  try {
+    localStorage.removeItem('sapiens-admin-token'); sessionStorage.removeItem('sapiens-admin-token');
+    (remember ? localStorage : sessionStorage).setItem('sapiens-admin-token', t);
+  } catch(e){}
+}
+function clearToken(){
+  try { localStorage.removeItem('sapiens-admin-token'); sessionStorage.removeItem('sapiens-admin-token'); } catch(e){}
+}
+
+async function signIn(t, remember, silent){
+  const err = $('loginErr');
+  err.hidden = true;
+  $('signIn').disabled = true;
+  $('signIn').innerHTML = '<span class="spin"></span>Checking…';
+  try {
+    let user;
+    try { user = await gh('/user', { tok: t }); }
+    catch(e){ throw new Error(e.status === 401 ? 'That token was rejected by GitHub — it may be mistyped, expired, or revoked.' : 'Could not reach GitHub: ' + e.message); }
+    if ((user.login || '').toLowerCase() !== CFG.admin)
+      throw new Error(`This token belongs to @${user.login}, not the site admin. Access denied.`);
+    const repo = await gh(repoPath(''), { tok: t }).catch(() => null);
+    if (!repo) throw new Error(`This token can't see the ${CFG.repo} repository. Give it access to that repo (see "How do I get a token?").`);
+    if (repo.permissions && repo.permissions.push === false)
+      throw new Error('This account has no write access to the repository.');
+
+    token = t;
+    if (!silent) storeToken(t, remember);
+    $('whoName').textContent = '@' + user.login;
+    $('who').hidden = false;
+    $('login').hidden = true;
+    $('app').hidden = false;
+    $('bar').hidden = false;
+    $('token').value = '';
+    await load();
+  } catch(e){
+    if (silent) clearToken();
+    err.textContent = e.message;
+    err.hidden = false;
+  } finally {
+    $('signIn').disabled = false;
+    $('signIn').textContent = 'Sign in';
+  }
+}
+
+function signOut(){
+  if (pending().length && !confirm('You have unpublished changes. Sign out and lose them?')) return;
+  clearToken();
+  token = null; base = null; items = [];
+  $('who').hidden = true; $('app').hidden = true; $('bar').hidden = true; $('login').hidden = false;
+  $('grid').replaceChildren();
+}
+
+/* ---------------- load the rack from GitHub ---------------- */
+async function load(){
+  setStatus('<span class="spin"></span>Loading the rack from GitHub…');
+  const ref = await gh(repoPath(`/git/ref/heads/${CFG.branch}`));
+  const sha = ref.object.sha;
+  const text = await manifestAt(sha);
+  base = { sha, text };
+  items = JSON.parse(text).map(d => ({ file: d.file, name: d.name || '', isNew: false, removed: false }));
+  render();
+}
+
+/* ---------------- image processing ---------------- */
+function loadImg(url){
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('not a readable image')); i.src = url; });
+}
+async function processImage(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImg(url);
+    /* work at <=1440px so huge exports don't exhaust memory on tablets */
+    const s1 = Math.min(1, 1440 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w1 = Math.max(1, Math.round(img.naturalWidth * s1)), h1 = Math.max(1, Math.round(img.naturalHeight * s1));
+    const c1 = document.createElement('canvas'); c1.width = w1; c1.height = h1;
+    const x1 = c1.getContext('2d', { willReadFrequently: true });
+    x1.drawImage(img, 0, 0, w1, h1);
+
+    /* trim fully transparent margins so every shirt fills its card the same way */
+    const px = x1.getImageData(0, 0, w1, h1).data;
+    let minX = w1, minY = h1, maxX = -1, maxY = -1, opaque = true;
+    for (let y = 0; y < h1; y++){
+      for (let x = 0; x < w1; x++){
+        const a = px[(y * w1 + x) * 4 + 3];
+        if (a < 250) opaque = false;
+        if (a > 10){ if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+      }
+    }
+    if (maxX < 0) throw new Error('the image is completely transparent');
+    if (opaque){ minX = 0; minY = 0; maxX = w1 - 1; maxY = h1 - 1; }
+    const cw = maxX - minX + 1, ch = maxY - minY + 1;
+    const pad = Math.round(Math.max(cw, ch) * 0.03);
+    const s2 = Math.min(1, MAX_SIDE / (Math.max(cw, ch) + pad * 2));
+    const c2 = document.createElement('canvas');
+    c2.width = Math.round((cw + pad * 2) * s2); c2.height = Math.round((ch + pad * 2) * s2);
+    const x2 = c2.getContext('2d');
+    x2.imageSmoothingQuality = 'high';
+    x2.drawImage(c1, minX, minY, cw, ch, pad * s2, pad * s2, cw * s2, ch * s2);
+
+    let dataUrl = c2.toDataURL('image/webp', 0.9), ext = 'webp';
+    if (!dataUrl.startsWith('data:image/webp')){   /* browsers without WebP encoding (older Safari) */
+      dataUrl = c2.toDataURL('image/png'); ext = 'png';
+    }
+    return { dataUrl, ext, opaque };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+function nameFromFile(f){
+  const n = f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return (n ? n.replace(/\b\w/g, c => c.toUpperCase()) : 'New design').slice(0, 40);
+}
+async function addFiles(files){
+  const list = [...files].filter(f => /^image\//.test(f.type) || /\.(png|webp|jpe?g)$/i.test(f.name));
+  if (!list.length) return;
+  setStatus(`<span class="spin"></span>Preparing ${list.length} image${list.length > 1 ? 's' : ''}…`);
+  const failed = [];
+  const added = [];
+  for (const f of list){
+    try {
+      const p = await processImage(f);
+      added.push({ file: null, name: nameFromFile(f), isNew: true, removed: false, ...p });
+    } catch(e){ failed.push(`${f.name} (${e.message})`); }
+  }
+  items = [...added, ...items];   /* new drops go to the front of the rack */
+  render();
+  if (failed.length) setStatus(`<span style="color:var(--clay)">Couldn't use: ${esc(failed.join(', '))}</span>`);
+}
+
+/* ---------------- pending changes ---------------- */
+function pending(){
+  if (!base) return [];
+  const out = [];
+  const orig = JSON.parse(base.text);
+  const origName = Object.fromEntries(orig.map(d => [d.file, d.name || '']));
+  for (const it of items){
+    if (it.isNew && !it.removed) out.push(`add "${it.name.trim() || 'untitled'}"`);
+    if (!it.isNew && it.removed) out.push(`remove "${origName[it.file] || it.file}"`);
+    if (!it.isNew && !it.removed && it.name.trim() !== origName[it.file]) out.push(`rename "${origName[it.file]}" → "${it.name.trim()}"`);
+  }
+  const keptNow = items.filter(i => !i.isNew && !i.removed).map(i => i.file).join('|');
+  const keptOrig = orig.map(d => d.file).filter(f => items.some(i => i.file === f && !i.removed)).join('|');
+  if (keptNow !== keptOrig) out.push('reorder');
+  return out;
+}
+
+/* ---------------- render ---------------- */
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function setStatus(html){ $('status').innerHTML = html; }
+
+const thumbCache = new Map();
+function thumbFor(it, img){
+  if (it.dataUrl){ img.src = it.dataUrl; return; }
+  if (thumbCache.has(it.file)){ img.src = thumbCache.get(it.file); return; }
+  img.src = `${CFG.dir}/${it.file}`;
+  img.onerror = async () => {      /* not deployed yet: read it straight from the repo */
+    img.onerror = null;
+    try {
+      const blob = await gh(repoPath(`/contents/${CFG.dir}/${encodeURIComponent(it.file)}?ref=${CFG.branch}`), { raw: true });
+      const u = URL.createObjectURL(blob); thumbCache.set(it.file, u); img.src = u;
+    } catch(e){}
+  };
+}
+
+function render(){
+  const grid = $('grid');
+  grid.replaceChildren();
+  const visible = items.filter(i => !i.removed).length;
+  $('count').textContent = `${visible} design${visible === 1 ? '' : 's'}`;
+  $('empty').hidden = items.length > 0;
+  const firstKept = items.findIndex(i => !i.removed);
+
+  items.forEach((it, idx) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile' + (it.isNew ? ' new' : '') + (it.removed ? ' removed' : '');
+
+    const badges = document.createElement('div'); badges.className = 'badges';
+    const badge = (cls, txt) => { const b = document.createElement('span'); b.className = 'badge ' + cls; b.textContent = txt; badges.append(b); };
+    if (it.isNew) badge('n', 'New');
+    if (idx === firstKept) badge('f', 'Front');
+    if (it.isNew && it.opaque) badge('w', 'No transparency');
+
+    const th = document.createElement('div'); th.className = 'thumb';
+    const img = document.createElement('img'); img.alt = ''; thumbFor(it, img); th.append(img);
+
+    const name = document.createElement('input');
+    name.type = 'text'; name.maxLength = 40; name.value = it.name; name.disabled = it.removed;
+    name.setAttribute('aria-label', 'Design name');
+    name.addEventListener('input', () => { it.name = name.value; updateBar(); });
+
+    const tools = document.createElement('div'); tools.className = 'tools';
+    const mk = (txt, label, fn, dis, cls) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = txt;
+      b.setAttribute('aria-label', label); b.title = label; b.disabled = !!dis; if (cls) b.className = cls;
+      b.addEventListener('click', fn); tools.append(b);
+    };
+    mk('↑', 'Move earlier', () => move(idx, -1), it.removed || idx === 0);
+    mk('↓', 'Move later', () => move(idx, 1), it.removed || idx === items.length - 1);
+    if (it.removed) mk('Undo', 'Keep this design', () => { it.removed = false; render(); });
+    else mk('✕', 'Remove from rack', () => remove(idx), false, 'del');
+
+    tile.append(badges, th, name, tools);
+    grid.append(tile);
+  });
+  updateBar();
+}
+function move(idx, dir){
+  const j = idx + dir;
+  if (j < 0 || j >= items.length) return;
+  [items[idx], items[j]] = [items[j], items[idx]];
+  render();
+}
+function remove(idx){
+  const it = items[idx];
+  if (it.isNew) items.splice(idx, 1);       /* never uploaded: just drop it */
+  else it.removed = true;
+  render();
+}
+function updateBar(){
+  const p = pending();
+  const blank = items.some(i => !i.removed && !i.name.trim());
+  $('publish').disabled = busy || !p.length || blank;
+  $('discard').disabled = busy || !p.length;
+  if (busy) return;
+  if (blank) setStatus('<span style="color:var(--clay)">Every design needs a name.</span>');
+  else if (p.length) setStatus(`<b>${p.length} unpublished change${p.length > 1 ? 's' : ''}</b> — ${esc(p.slice(0, 3).join(', '))}${p.length > 3 ? '…' : ''}`);
+  else setStatus('Everything is published. <a href="./" target="_blank" rel="noopener">View the shop ↗</a>');
+}
+
+/* ---------------- publish: one commit, one redeploy ---------------- */
+function slug(s){ return s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_-]+/g, '-').slice(0, 32) || 'design'; }
+function stamp(){ const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`; }
+
+async function publish(){
+  const changes = pending();
+  if (!changes.length || busy) return;
+  busy = true; updateBar();
+  setStatus('<span class="spin"></span>Publishing…');
+  try {
+    const ref = await gh(repoPath(`/git/ref/heads/${CFG.branch}`));
+    const head = ref.object.sha;
+    if (head !== base.sha && (await manifestAt(head)) !== base.text)
+      throw new Error('The design list changed on GitHub since this page loaded. Reload the page and redo your changes.');
+    const headCommit = await gh(repoPath(`/git/commits/${head}`));
+
+    const tree = [];
+    const st = stamp();
+    let n = 0;
+    for (const it of items){
+      if (!it.isNew || it.removed) continue;
+      it.file = `${slug(it.name)}-${st}${n++ ? '-' + n : ''}.${it.ext}`;
+      setStatus(`<span class="spin"></span>Uploading “${esc(it.name.trim())}”…`);
+      const blob = await gh(repoPath('/git/blobs'), { method: 'POST', body: { content: it.dataUrl.split(',')[1], encoding: 'base64' } });
+      tree.push({ path: `${CFG.dir}/${it.file}`, mode: '100644', type: 'blob', sha: blob.sha });
+    }
+    for (const it of items)
+      if (!it.isNew && it.removed) tree.push({ path: `${CFG.dir}/${it.file}`, mode: '100644', type: 'blob', sha: null });
+
+    const kept = items.filter(i => !i.removed);
+    const text = JSON.stringify(kept.map(i => ({ file: i.file, name: i.name.trim() })), null, 2) + '\n';
+    tree.push({ path: `${CFG.dir}/manifest.json`, mode: '100644', type: 'blob', content: text });
+
+    setStatus('<span class="spin"></span>Saving to GitHub…');
+    const t = await gh(repoPath('/git/trees'), { method: 'POST', body: { base_tree: headCommit.tree.sha, tree } });
+    const message = 'Admin: ' + (changes.length === 1 ? changes[0] : changes.length + ' design changes') + '\n\n' + changes.map(c => '- ' + c).join('\n');
+    const c = await gh(repoPath('/git/commits'), { method: 'POST', body: { message, tree: t.sha, parents: [head] } });
+    try {
+      await gh(repoPath(`/git/refs/heads/${CFG.branch}`), { method: 'PATCH', body: { sha: c.sha, force: false } });
+    } catch(e){
+      if (e.status === 422) throw new Error('Someone else changed the repository at the same moment. Reload the page and try again.');
+      throw e;
+    }
+
+    base = { sha: c.sha, text };
+    items = kept.map(i => ({ file: i.file, name: i.name.trim(), isNew: false, removed: false, dataUrl: i.dataUrl }));
+    busy = false;
+    render();
+    waitForLive(text);
+  } catch(e){
+    busy = false; updateBar();
+    setStatus(`<span style="color:var(--clay)">Publish failed: ${esc(e.message)}</span>`);
+    items.forEach(i => { if (i.isNew) i.file = null; });
+  }
+}
+
+/* poll the live site's manifest until the new version is being served */
+async function waitForLive(text){
+  const want = JSON.stringify(JSON.parse(text));
+  setStatus('<span class="spin"></span><b>Published.</b> The site is redeploying — usually about a minute…');
+  for (let i = 0; i < 40; i++){
+    await new Promise(r => setTimeout(r, 6000));
+    if (base.text !== text) return;            /* a newer publish took over */
+    try {
+      const r = await fetch(`${CFG.dir}/manifest.json`, { cache: 'no-store' });
+      if (r.ok && JSON.stringify(JSON.parse(await r.text())) === want){
+        setStatus('<b class="ok">✓ Live on the site.</b> <a href="./" target="_blank" rel="noopener">View the shop ↗</a> (hard-refresh if it was already open)');
+        return;
+      }
+    } catch(e){}
+  }
+  setStatus(`<b>Published,</b> but the site hasn't picked it up yet. <a href="https://github.com/${CFG.owner}/${CFG.repo}/actions" target="_blank" rel="noopener">Check the deploy ↗</a>`);
+}
+
+/* ---------------- wiring ---------------- */
+$('signIn').addEventListener('click', () => {
+  const t = $('token').value.trim();
+  if (!t){ $('loginErr').textContent = 'Paste your token first.'; $('loginErr').hidden = false; return; }
+  signIn(t, $('remember').checked, false);
+});
+$('token').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
+$('signOut').addEventListener('click', signOut);
+
+const drop = $('drop'), fileIn = $('file');
+drop.addEventListener('click', () => fileIn.click());
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileIn.click(); } });
+fileIn.addEventListener('change', () => { addFiles(fileIn.files); fileIn.value = ''; });
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+$('publish').addEventListener('click', publish);
+$('discard').addEventListener('click', () => {
+  if (!confirm('Discard all unpublished changes?')) return;
+  items = JSON.parse(base.text).map(d => ({ file: d.file, name: d.name || '', isNew: false, removed: false }));
+  render();
+});
+window.addEventListener('beforeunload', e => { if (pending().length){ e.preventDefault(); e.returnValue = ''; } });
+
+const saved = storedToken();
+if (saved) signIn(saved, true, true);
+</script>
+</body>
+</html>
