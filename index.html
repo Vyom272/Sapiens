@@ -495,6 +495,14 @@ body.lightsout .neon-shop .flick{
   pointer-events:none;z-index:2;      /* shirt covers the hanger shoulders */
   filter:drop-shadow(0 22px 20px rgba(0,0,0,.5));
 }
+/* two-sided shirts: the hanger and shirt turn on the hook's vertical axis.
+   Which image shows is switched by script at the half-turn, so this
+   doesn't depend on backface-visibility (inconsistent across browsers) */
+.swing.duo{perspective:calc(var(--cw) * 3.5)}
+.flip{position:absolute;inset:0;will-change:transform}
+.card img.tee.back{transform:scaleX(-1);visibility:hidden}  /* seen through the turned plane, so pre-mirrored */
+.flip.show-back img.tee.front{visibility:hidden}
+.flip.show-back img.tee.back{visibility:visible}
 .card .label{z-index:3}
 .card .label{
   position:absolute;left:0;right:0;bottom:-14px;
@@ -549,6 +557,14 @@ body.lightsout .neon-shop .flick{
 }
 #lightbox img.zoomed{transform:scale(1.6);cursor:zoom-out}
 #lightbox figcaption{margin-top:1rem;font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sand)}
+.lb-flip{
+  margin-top:.9rem;background:none;border:1px solid var(--sage);color:var(--sand);
+  font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+  padding:.55rem 1.1rem;border-radius:999px;cursor:pointer;transition:.25s;
+}
+.lb-flip:hover{border-color:var(--neon);color:var(--neon);box-shadow:0 0 18px rgba(53,224,105,.25)}
+#lightbox img.flipping{animation:lbflip .36s ease-in-out}
+@keyframes lbflip{0%,100%{transform:scaleX(1)}50%{transform:scaleX(0)}}
 #lightbox .close{position:absolute;top:1.4rem;right:1.8rem;background:none;border:none;color:var(--sand);font-size:2rem;cursor:pointer;line-height:1}
 .lb-nav{
   position:absolute;top:50%;transform:translateY(-50%);
@@ -917,6 +933,7 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
   <figure>
     <img id="lb-img" src="" alt="">
     <figcaption id="lb-cap"></figcaption>
+    <button class="lb-flip" id="lb-flip" type="button" hidden>↻ See the back</button>
   </figure>
 </div>
 
@@ -932,6 +949,7 @@ async function loadDesigns(){
       const list = await r.json();
       return list.map((d, i) => ({
         src: 'designs/' + d.file,
+        back: d.back ? 'designs/' + d.back : null,
         name: d.name || ('Design ' + String(i+1).padStart(2,'0'))
       }));
     }catch(e){ await new Promise(res => setTimeout(res, 400 * (attempt + 1))); }
@@ -1024,14 +1042,18 @@ DESIGNS.forEach((d, i) => {
   const c = document.createElement('div');
   c.className = 'card';
   c.dataset.i = i;
-  c.innerHTML = `<div class="swing">
-      ${HANGER_SVG}
-      <img class="tee" src="${esc(d.src)}" alt="${esc(d.name)} t-shirt design" draggable="false" decoding="async">
+  const front = `<img class="tee${d.back ? ' front' : ''}" src="${esc(d.src)}" alt="${esc(d.name)} t-shirt design" draggable="false" decoding="async">`;
+  const body = d.back
+    ? `<div class="flip">${HANGER_SVG}${front}
+         <img class="tee back" src="${esc(d.back)}" alt="Back of ${esc(d.name)}" draggable="false" decoding="async"></div>`
+    : `${HANGER_SVG}${front}`;
+  c.innerHTML = `<div class="swing${d.back ? ' duo' : ''}">${body}
       <div class="label"><span class="no">${esc(d.name)}</span></div>
     </div>`;
   c.style.transform = `rotateY(${i*step}deg) translateZ(${RADIUS}px)`;
   ring.appendChild(c);
-  swings.push({ el: c.querySelector('.swing'), phase: Math.random()*Math.PI*2 });
+  swings.push({ el: c.querySelector('.swing'), phase: Math.random()*Math.PI*2,
+                flip: c.querySelector('.flip'), turnOffset: 0, showingBack: false });
 });
 /* tap-to-open / double-tap-to-like is handled on the stage's pointerup
    (see below): the stage captures the pointer while dragging, which makes
@@ -1183,6 +1205,19 @@ function frontIndex(){
   let a = ((-angle % 360) + 360) % 360;
   return Math.round(a / step) % N;
 }
+/* two-sided shirts: hold the front, turn to show the back, hold, turn back */
+const TURN = { front: 5, move: 1.4, back: 3.2 };
+const TURN_CYCLE = TURN.front + TURN.move + TURN.back + TURN.move;
+/* spread them evenly through the cycle so they never turn in unison */
+swings.filter(s => s.flip).forEach((s, k, all) => { s.turnOffset = -k * TURN_CYCLE / all.length; });
+function turnAngle(t){
+  const u = ((t % TURN_CYCLE) + TURN_CYCLE) % TURN_CYCLE;
+  const ease = x => 0.5 - 0.5 * Math.cos(Math.PI * x);
+  if (u < TURN.front) return 0;
+  if (u < TURN.front + TURN.move) return 180 * ease((u - TURN.front) / TURN.move);
+  if (u < TURN.front + TURN.move + TURN.back) return 180;
+  return 180 + 180 * ease((u - TURN.front - TURN.move - TURN.back) / TURN.move);
+}
 function render(now){
   ring.style.transform = `translateZ(${-RADIUS}px) rotateY(${angle}deg)`;
   const f = frontIndex();
@@ -1201,6 +1236,12 @@ function render(now){
     for (const s of swings){
       const a = Math.sin(t*1.4 + s.phase) * 1.5 + sway;
       s.el.style.transform = `rotateZ(${a}deg)`;
+      if (s.flip){
+        const turn = turnAngle(t + s.turnOffset);
+        s.flip.style.transform = `rotateY(${turn}deg)`;
+        const back = Math.cos(turn * Math.PI / 180) < 0;
+        if (back !== s.showingBack){ s.showingBack = back; s.flip.classList.toggle('show-back', back); }
+      }
     }
     rod.classList.toggle('glow', Math.abs(velocity) > 1.2);
   }
@@ -1347,25 +1388,37 @@ document.addEventListener('keydown', e=>{
 const lb = document.getElementById('lightbox');
 const lbImg = document.getElementById('lb-img');
 const lbCap = document.getElementById('lb-cap');
-let lbIndex = 0;
+const lbFlip = document.getElementById('lb-flip');
+let lbIndex = 0, lbBack = false;
+function showLB(i, back){
+  const d = DESIGNS[i];
+  lbIndex = i; lbBack = !!(back && d.back);
+  lbImg.classList.remove('zoomed');
+  lbImg.src = lbBack ? d.back : d.src;
+  lbImg.alt = (lbBack ? 'Back of SAPIENs t-shirt design: ' : 'SAPIENs t-shirt design: ') + d.name;
+  lbCap.textContent = d.name + (lbBack ? ' · back' : '');
+  lbFlip.hidden = !d.back;
+  lbFlip.textContent = lbBack ? '↻ See the front' : '↻ See the back';
+}
 function openLB(i){
   buzz(10); clack(0.15, 1200);
-  lbIndex = i;
-  lbImg.classList.remove('zoomed');
-  lbImg.src = DESIGNS[i].src;
-  lbImg.alt = 'SAPIENs t-shirt design: ' + DESIGNS[i].name;
-  lbCap.textContent = DESIGNS[i].name;
+  /* open on whichever side the shirt is showing on the rack right now */
+  showLB(i, swings[i] && swings[i].showingBack);
   lb.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
+lbFlip.addEventListener('click', ()=>{
+  buzz(8); clack(0.13, 1300);
+  if (reduceMotion){ showLB(lbIndex, !lbBack); return; }
+  lbImg.classList.remove('flipping'); void lbImg.offsetWidth;
+  lbImg.classList.add('flipping');
+  setTimeout(()=>showLB(lbIndex, !lbBack), 180);   /* swap at the edge-on midpoint */
+});
+lbImg.addEventListener('animationend', ()=>lbImg.classList.remove('flipping'));
 function closeLB(){ buzz(6); lb.classList.remove('open'); document.body.style.overflow = ''; }
 function lbStep(d){
   buzz(7); clack(0.13, 1700);
-  lbIndex = (lbIndex + d + N) % N;
-  lbImg.classList.remove('zoomed');
-  lbImg.src = DESIGNS[lbIndex].src;
-  lbImg.alt = 'SAPIENs t-shirt design: ' + DESIGNS[lbIndex].name;
-  lbCap.textContent = DESIGNS[lbIndex].name;
+  showLB((lbIndex + d + N) % N, false);
   animateTo(-lbIndex * step);
 }
 lb.addEventListener('click', e=>{ if (e.target === lb || e.target.classList.contains('close')) closeLB(); });
