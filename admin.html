@@ -94,6 +94,23 @@ details b{color:var(--ink);font-weight:500}
   background:radial-gradient(ellipse at 50% 40%, #3a2a22, #1a1310 75%);overflow:hidden;
 }
 .thumb img{max-width:92%;max-height:92%;object-fit:contain;filter:drop-shadow(0 8px 10px rgba(0,0,0,.55))}
+.thumb{position:relative}
+.backthumb{
+  position:absolute;right:.35rem;bottom:.35rem;width:40%;aspect-ratio:1;border-radius:7px;
+  border:1px solid rgba(216,201,163,.5);background:radial-gradient(ellipse at 50% 40%, #3a2a22, #1a1310 75%);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.5);
+}
+.backthumb img{max-width:88%;max-height:88%}
+.backthumb span{position:absolute;top:3px;left:5px;font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.12em;color:var(--sand);text-shadow:0 1px 3px #000}
+.backthumb.newback{border-color:rgba(53,224,105,.7)}
+.sides{display:flex;gap:.35rem}
+.sides button{
+  flex:1;background:none;border:1px dashed var(--line);color:var(--dim);border-radius:8px;
+  padding:.38rem .2rem;font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.06em;transition:.2s;
+}
+.sides button:hover{border-color:var(--sage);color:var(--ink)}
+.sides button.del:hover{border-color:var(--clay);color:var(--clay)}
+.badge.t{color:#8ec5ff;border:1px solid rgba(142,197,255,.55)}
 .badges{position:absolute;top:.9rem;left:.9rem;right:.9rem;display:flex;gap:.3rem;flex-wrap:wrap;z-index:2;pointer-events:none}
 .badge{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:.18rem .45rem;border-radius:999px;background:rgba(8,9,7,.85)}
 .badge.n{color:var(--neon);border:1px solid rgba(53,224,105,.6)}
@@ -182,11 +199,12 @@ details b{color:var(--ink);font-weight:500}
         <small>Images are trimmed and resized automatically before upload.</small>
       </div>
       <input type="file" id="file" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
+      <input type="file" id="backFile" accept="image/png,image/webp,image/jpeg,image/*" hidden>
     </div>
 
     <div class="card" id="rackCard">
       <h2>On the rack <span class="count" id="count"></span></h2>
-      <p class="help" style="margin-bottom:1rem">The first design faces the front when the shop loads. Use the arrows to reorder, edit names inline, and ✕ to remove. Nothing changes on the live site until you press <b style="color:var(--ink)">Publish</b>.</p>
+      <p class="help" style="margin-bottom:1rem">The first design faces the front when the shop loads. Use the arrows to reorder, edit names inline, and ✕ to remove. Add a <b style="color:var(--ink)">back side</b> to any design and it will turn on its hanger in the shop to show it. Nothing changes on the live site until you press <b style="color:var(--ink)">Publish</b>.</p>
       <div class="grid" id="grid"></div>
       <p class="empty" id="empty" hidden>No designs yet — add one above.</p>
     </div>
@@ -306,13 +324,16 @@ function signOut(){
 }
 
 /* ---------------- load the rack from GitHub ---------------- */
+function fromManifest(d){
+  return { file: d.file, name: d.name || '', back: d.back || null, isNew: false, removed: false, backNew: null, backRemoved: false };
+}
 async function load(){
   setStatus('<span class="spin"></span>Loading the rack from GitHub…');
   const ref = await gh(repoPath(`/git/ref/heads/${CFG.branch}`));
   const sha = ref.object.sha;
   const text = await manifestAt(sha);
   base = { sha, text };
-  items = JSON.parse(text).map(d => ({ file: d.file, name: d.name || '', isNew: false, removed: false }));
+  items = JSON.parse(text).map(fromManifest);
   render();
 }
 
@@ -374,7 +395,7 @@ async function addFiles(files){
   for (const f of list){
     try {
       const p = await processImage(f);
-      added.push({ file: null, name: nameFromFile(f), isNew: true, removed: false, ...p });
+      added.push({ file: null, name: nameFromFile(f), isNew: true, removed: false, back: null, backNew: null, backRemoved: false, ...p });
     } catch(e){ failed.push(`${f.name} (${e.message})`); }
   }
   items = [...added, ...items];   /* new drops go to the front of the rack */
@@ -389,7 +410,12 @@ function pending(){
   const orig = JSON.parse(base.text);
   const origName = Object.fromEntries(orig.map(d => [d.file, d.name || '']));
   for (const it of items){
-    if (it.isNew && !it.removed) out.push(`add "${it.name.trim() || 'untitled'}"`);
+    const nm = it.name.trim() || 'untitled';
+    if (it.isNew && !it.removed) out.push(`add "${nm}"${it.backNew ? ' (front + back)' : ''}`);
+    if (!it.isNew && !it.removed){
+      if (it.backNew) out.push(it.back ? `new back for "${nm}"` : `add back to "${nm}"`);
+      else if (it.backRemoved && it.back) out.push(`remove back of "${nm}"`);
+    }
     if (!it.isNew && it.removed) out.push(`remove "${origName[it.file] || it.file}"`);
     if (!it.isNew && !it.removed && it.name.trim() !== origName[it.file]) out.push(`rename "${origName[it.file]}" → "${it.name.trim()}"`);
   }
@@ -404,15 +430,16 @@ function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 function setStatus(html){ $('status').innerHTML = html; }
 
 const thumbCache = new Map();
-function thumbFor(it, img){
-  if (it.dataUrl){ img.src = it.dataUrl; return; }
-  if (thumbCache.has(it.file)){ img.src = thumbCache.get(it.file); return; }
-  img.src = `${CFG.dir}/${it.file}`;
+function thumbFor(it, img){ showThumb(it.file, it.dataUrl, img); }
+function showThumb(file, dataUrl, img){
+  if (dataUrl){ img.src = dataUrl; return; }
+  if (thumbCache.has(file)){ img.src = thumbCache.get(file); return; }
+  img.src = `${CFG.dir}/${file}`;
   img.onerror = async () => {      /* not deployed yet: read it straight from the repo */
     img.onerror = null;
     try {
-      const blob = await gh(repoPath(`/contents/${CFG.dir}/${encodeURIComponent(it.file)}?ref=${CFG.branch}`), { raw: true });
-      const u = URL.createObjectURL(blob); thumbCache.set(it.file, u); img.src = u;
+      const blob = await gh(repoPath(`/contents/${CFG.dir}/${encodeURIComponent(file)}?ref=${CFG.branch}`), { raw: true });
+      const u = URL.createObjectURL(blob); thumbCache.set(file, u); img.src = u;
     } catch(e){}
   };
 }
@@ -434,9 +461,36 @@ function render(){
     if (it.isNew) badge('n', 'New');
     if (idx === firstKept) badge('f', 'Front');
     if (it.isNew && it.opaque) badge('w', 'No transparency');
+    const hasBack = !!(it.backNew || (it.back && !it.backRemoved));
+    if (hasBack && !it.removed) badge('t', 'Turns');
+    if (it.backNew && it.backNew.opaque) badge('w', 'Back: no transparency');
 
     const th = document.createElement('div'); th.className = 'thumb';
     const img = document.createElement('img'); img.alt = ''; thumbFor(it, img); th.append(img);
+    if (hasBack){
+      const bt = document.createElement('div'); bt.className = 'backthumb' + (it.backNew ? ' newback' : '');
+      const bi = document.createElement('img'); bi.alt = 'Back side';
+      showThumb(it.back, it.backNew ? it.backNew.dataUrl : it.backDataUrl, bi);
+      const bl = document.createElement('span'); bl.textContent = 'BACK';
+      bt.append(bi, bl); th.append(bt);
+    }
+
+    const sides = document.createElement('div'); sides.className = 'sides';
+    const mkSide = (txt, label, fn, cls) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = txt;
+      b.setAttribute('aria-label', label); b.title = label; if (cls) b.className = cls;
+      b.addEventListener('click', fn); sides.append(b);
+    };
+    if (!it.removed){
+      if (!hasBack) mkSide('+ Back side', 'Upload the back of this shirt', () => pickBack(it));
+      else {
+        mkSide('Change back', 'Replace the back image', () => pickBack(it));
+        mkSide('Remove back', 'Remove the back image', () => {
+          it.backNew = null; it.backRemoved = true;
+          render();
+        }, 'del');
+      }
+    }
 
     const name = document.createElement('input');
     name.type = 'text'; name.maxLength = 40; name.value = it.name; name.disabled = it.removed;
@@ -454,10 +508,22 @@ function render(){
     if (it.removed) mk('Undo', 'Keep this design', () => { it.removed = false; render(); });
     else mk('✕', 'Remove from rack', () => remove(idx), false, 'del');
 
-    tile.append(badges, th, name, tools);
+    tile.append(badges, th, name, sides, tools);
     grid.append(tile);
   });
   updateBar();
+}
+let backTarget = null;
+function pickBack(it){ backTarget = it; $('backFile').click(); }
+async function setBack(file){
+  const it = backTarget; backTarget = null;
+  if (!it || !file) return;
+  setStatus('<span class="spin"></span>Preparing the back image…');
+  try {
+    it.backNew = await processImage(file);
+    it.backRemoved = false;
+    render();
+  } catch(e){ updateBar(); setStatus(`<span style="color:var(--clay)">Couldn't use ${esc(file.name)} (${esc(e.message)})</span>`); }
 }
 function move(idx, dir){
   const j = idx + dir;
@@ -502,18 +568,32 @@ async function publish(){
     const tree = [];
     const st = stamp();
     let n = 0;
+    const upload = async (dataUrl, path) => {
+      const blob = await gh(repoPath('/git/blobs'), { method: 'POST', body: { content: dataUrl.split(',')[1], encoding: 'base64' } });
+      tree.push({ path: `${CFG.dir}/${path}`, mode: '100644', type: 'blob', sha: blob.sha });
+    };
+    const drop = path => tree.push({ path: `${CFG.dir}/${path}`, mode: '100644', type: 'blob', sha: null });
     for (const it of items){
-      if (!it.isNew || it.removed) continue;
-      it.file = `${slug(it.name)}-${st}${n++ ? '-' + n : ''}.${it.ext}`;
-      setStatus(`<span class="spin"></span>Uploading “${esc(it.name.trim())}”…`);
-      const blob = await gh(repoPath('/git/blobs'), { method: 'POST', body: { content: it.dataUrl.split(',')[1], encoding: 'base64' } });
-      tree.push({ path: `${CFG.dir}/${it.file}`, mode: '100644', type: 'blob', sha: blob.sha });
+      if (it.removed){
+        if (!it.isNew){ drop(it.file); if (it.back) drop(it.back); }   /* a removed design takes its back with it */
+        continue;
+      }
+      if (it.isNew){
+        it.file = `${slug(it.name)}-${st}${n++ ? '-' + n : ''}.${it.ext}`;
+        setStatus(`<span class="spin"></span>Uploading “${esc(it.name.trim())}”…`);
+        await upload(it.dataUrl, it.file);
+      }
+      it.finalBack = it.backRemoved ? null : it.back;
+      if (it.backNew){
+        it.finalBack = `${slug(it.name)}-back-${st}${n++ ? '-' + n : ''}.${it.backNew.ext}`;
+        setStatus(`<span class="spin"></span>Uploading the back of “${esc(it.name.trim())}”…`);
+        await upload(it.backNew.dataUrl, it.finalBack);
+      }
+      if (it.back && it.finalBack !== it.back) drop(it.back);           /* replaced or removed back */
     }
-    for (const it of items)
-      if (!it.isNew && it.removed) tree.push({ path: `${CFG.dir}/${it.file}`, mode: '100644', type: 'blob', sha: null });
 
     const kept = items.filter(i => !i.removed);
-    const text = JSON.stringify(kept.map(i => ({ file: i.file, name: i.name.trim() })), null, 2) + '\n';
+    const text = JSON.stringify(kept.map(i => ({ file: i.file, name: i.name.trim(), ...(i.finalBack ? { back: i.finalBack } : {}) })), null, 2) + '\n';
     tree.push({ path: `${CFG.dir}/manifest.json`, mode: '100644', type: 'blob', content: text });
 
     setStatus('<span class="spin"></span>Saving to GitHub…');
@@ -528,14 +608,15 @@ async function publish(){
     }
 
     base = { sha: c.sha, text };
-    items = kept.map(i => ({ file: i.file, name: i.name.trim(), isNew: false, removed: false, dataUrl: i.dataUrl }));
+    items = kept.map(i => ({ ...fromManifest({ file: i.file, name: i.name.trim(), back: i.finalBack }),
+      dataUrl: i.dataUrl, backDataUrl: i.backNew ? i.backNew.dataUrl : (i.finalBack ? i.backDataUrl : null) }));
     busy = false;
     render();
     waitForLive(text);
   } catch(e){
     busy = false; updateBar();
     setStatus(`<span style="color:var(--clay)">Publish failed: ${esc(e.message)}</span>`);
-    items.forEach(i => { if (i.isNew) i.file = null; });
+    items.forEach(i => { if (i.isNew) i.file = null; delete i.finalBack; });
   }
 }
 
@@ -570,6 +651,7 @@ const drop = $('drop'), fileIn = $('file');
 drop.addEventListener('click', () => fileIn.click());
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileIn.click(); } });
 fileIn.addEventListener('change', () => { addFiles(fileIn.files); fileIn.value = ''; });
+$('backFile').addEventListener('change', () => { const f = $('backFile').files[0]; $('backFile').value = ''; setBack(f); });
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
@@ -577,7 +659,7 @@ drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 $('publish').addEventListener('click', publish);
 $('discard').addEventListener('click', () => {
   if (!confirm('Discard all unpublished changes?')) return;
-  items = JSON.parse(base.text).map(d => ({ file: d.file, name: d.name || '', isNew: false, removed: false }));
+  items = JSON.parse(base.text).map(fromManifest);
   render();
 });
 window.addEventListener('beforeunload', e => { if (pending().length){ e.preventDefault(); e.returnValue = ''; } });
