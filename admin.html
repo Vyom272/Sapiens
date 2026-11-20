@@ -137,6 +137,14 @@ details b{color:var(--ink);font-weight:500}
 .slider{display:flex;align-items:center;gap:.6rem;margin:.35rem 0 .2rem 1.7rem;font-size:.75rem;color:var(--dim);max-width:420px}
 .slider input{flex:1;accent-color:var(--neon)}
 #beNote{margin-top:.9rem;min-height:1.5em}
+.cmp.two{grid-template-columns:repeat(2,1fr);max-width:640px}
+.befoot .grow{flex:1}
+.btn.del:hover:not(:disabled){border-color:var(--clay);color:var(--clay)}
+@media (max-width:620px){
+  .cmp.two figure:last-child{grid-column:auto;width:auto}
+  .befoot .grow{display:none}
+  .befoot .btn{flex:1 1 45%}
+}
 .warn{color:#f0b35a}
 @media (max-width:620px){
   .cmp{grid-template-columns:1fr 1fr}
@@ -226,8 +234,8 @@ details b{color:var(--ink);font-weight:500}
       <h2>Add designs</h2>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose design images to upload">
         <strong>Drop design images here, or tap to choose</strong>
-        PNG or WebP with a transparent background (just the shirt) hangs best on the rack.
-        <small>Images are trimmed and resized automatically before upload.</small>
+        Photos are fine — the background is removed for you, and you check the result before it's added.
+        <small>Images that already have a transparent background go straight in. Everything is trimmed and resized automatically.</small>
       </div>
       <input type="file" id="file" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
       <input type="file" id="backFile" accept="image/png,image/webp,image/jpeg,image/*" hidden>
@@ -235,35 +243,41 @@ details b{color:var(--ink);font-weight:500}
 
     <div class="card" id="rackCard">
       <h2>On the rack <span class="count" id="count"></span></h2>
-      <p class="help" style="margin-bottom:1rem">The first design faces the front when the shop loads. Use the arrows to reorder, edit names inline, and ✕ to remove. Add a <b style="color:var(--ink)">back side</b> to any design and it will turn on its hanger in the shop to show it. Nothing changes on the live site until you press <b style="color:var(--ink)">Publish</b>.</p>
+      <p class="help" style="margin-bottom:1rem">The first design faces the front when the shop loads. Use the arrows to reorder, edit names inline, and ✕ to remove. <b style="color:var(--ink)">✎ Front</b> cleans up a shirt's photo; <b style="color:var(--ink)">+ Back</b> adds a back side, and the shirt will turn on its hanger in the shop to show it. Nothing changes on the live site until you press <b style="color:var(--ink)">Publish</b>.</p>
       <div class="grid" id="grid"></div>
       <p class="empty" id="empty" hidden>No designs yet — add one above.</p>
     </div>
   </section>
 </main>
 
-<!-- ============ BACK-SIDE EDITOR ============ -->
+<!-- ============ SHIRT PHOTO EDITOR (front or back) ============ -->
 <div id="be" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="beTitle">
   <div class="modal-card">
-    <span class="tag">Back side</span>
+    <span class="tag" id="beTag">Back side</span>
     <h2 id="beTitle" style="margin-top:.4rem">Back</h2>
-    <div class="cmp">
-      <figure><div class="pane"><img id="beFront" alt="Front of the shirt"></div><figcaption>Front</figcaption></figure>
-      <figure><div class="pane"><img id="beGhost" class="ghost" alt=""><canvas id="beBack" aria-label="Prepared back of the shirt"></canvas></div><figcaption>Back</figcaption></figure>
-      <figure><div class="pane turnpane"><div class="turner"><img id="beTurnF" alt=""><img id="beTurnB" alt=""></div></div><figcaption>How it turns</figcaption></figure>
+    <div class="cmp" id="beCmp">
+      <figure><div class="pane"><img id="beFront" alt=""></div><figcaption id="beCap1">Front</figcaption></figure>
+      <figure><div class="pane"><img id="beGhost" class="ghost" alt=""><canvas id="beBack" aria-label="Prepared shirt image"></canvas></div><figcaption id="beCap2">Back</figcaption></figure>
+      <figure id="beFig3"><div class="pane turnpane"><div class="turner"><img id="beTurnF" alt=""><img id="beTurnB" alt=""></div></div><figcaption>How it turns</figcaption></figure>
     </div>
     <div class="ctl">
       <label class="check"><input type="checkbox" id="beRemove"><span>Remove the background</span></label>
       <div class="slider" id="beStrengthRow"><span>Gentle</span><input type="range" id="beStrength" min="4" max="45" step="1" aria-label="Background removal strength"><span>Strong</span></div>
-      <label class="check"><input type="checkbox" id="beFit"><span>Match the front's size &amp; position</span></label>
-      <label class="check"><input type="checkbox" id="beTone"><span>Match the front's colour &amp; lighting</span></label>
-      <label class="check"><input type="checkbox" id="beGhostOn" checked><span>Show the front faintly behind the back</span></label>
+      <div id="beBackOnly">
+        <label class="check"><input type="checkbox" id="beFit"><span>Match the front's size &amp; position</span></label>
+        <label class="check"><input type="checkbox" id="beTone"><span>Match the front's colour &amp; lighting</span></label>
+        <label class="check"><input type="checkbox" id="beGhostOn" checked><span>Show the front faintly behind the back</span></label>
+      </div>
     </div>
     <p class="help" id="beNote"></p>
-    <div class="row">
+    <div class="row befoot">
+      <button class="btn" id="beOther" type="button">Choose another photo</button>
+      <button class="btn del" id="beDrop" type="button">Remove back</button>
+      <span class="grow"></span>
       <button class="btn" id="beCancel" type="button">Cancel</button>
       <button class="btn primary" id="beUse" type="button" disabled>Use this back</button>
     </div>
+    <input type="file" id="editorFile" accept="image/png,image/webp,image/jpeg,image/*" hidden>
   </div>
 </div>
 
@@ -442,21 +456,66 @@ function nameFromFile(f){
   const n = f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
   return (n ? n.replace(/\b\w/g, c => c.toUpperCase()) : 'New design').slice(0, 40);
 }
+function newItem(f){
+  return { file: null, name: nameFromFile(f), isNew: true, removed: false, back: null, backNew: null, backRemoved: false };
+}
+async function hasTransparency(img){
+  const { data } = readPixels(img, 300);
+  for (let o = 3; o < data.length; o += 4) if (data[o] < 250) return true;
+  return false;
+}
+/* photos (no transparency) queue up for the editor, one at a time */
+const frontQueue = [];
+let queueTotal = 0, queuePos = 0, queueSkipped = [];
 async function addFiles(files){
   const list = [...files].filter(f => /^image\//.test(f.type) || /\.(png|webp|jpe?g)$/i.test(f.name));
   if (!list.length) return;
   setStatus(`<span class="spin"></span>Preparing ${list.length} image${list.length > 1 ? 's' : ''}…`);
-  const failed = [];
-  const added = [];
+  const failed = [], added = [];
   for (const f of list){
+    const url = URL.createObjectURL(f);
     try {
-      const p = await processImage(f);
-      added.push({ file: null, name: nameFromFile(f), isNew: true, removed: false, back: null, backNew: null, backRemoved: false, ...p });
-    } catch(e){ failed.push(`${f.name} (${e.message})`); }
+      const img = await loadImg(url);
+      if (await hasTransparency(img)){             /* already a cut-out: trim and add */
+        added.push({ ...newItem(f), ...(await processImage(f)) });
+        URL.revokeObjectURL(url);
+      } else { frontQueue.push({ f, url }); queueTotal++; }
+    } catch(e){ failed.push(`${f.name} (${e.message})`); URL.revokeObjectURL(url); }
   }
-  items = [...added, ...items];   /* new drops go to the front of the rack */
-  render();
+  if (added.length){ items = [...added, ...items]; render(); }   /* new drops go to the front of the rack */
   if (failed.length) setStatus(`<span style="color:var(--clay)">Couldn't use: ${esc(failed.join(', '))}</span>`);
+  else if (!frontQueue.length) updateBar();
+  if (frontQueue.length && $('be').hidden) nextFront();
+}
+function nextFront(){
+  const q = frontQueue.shift();
+  if (!q){
+    if (queueSkipped.length) setStatus(`Skipped: ${esc(queueSkipped.join(', '))}`);
+    queueTotal = queuePos = 0; queueSkipped = [];
+    return;
+  }
+  queuePos++;
+  const it = newItem(q.f);
+  openEditor({
+    mode: 'front', it, src: q.url,
+    title: `Front of “${it.name}”` + (queueTotal > 1 ? ` (${queuePos} of ${queueTotal})` : ''),
+    onUse: (res, sess) => { Object.assign(it, res); it.frontSrc = sess.src; it.frontOpts = sess.lastOpts; items = [it, ...items]; render(); nextFront(); },
+    onCancel: () => { queueSkipped.push(q.f.name); nextFront(); },
+  });
+}
+async function editFront(it){
+  try {
+    const src = it.frontSrc || (it.isNew ? it.dataUrl : await fileSrc(it.file));
+    openEditor({
+      mode: 'front', it, src, opts: it.frontOpts,
+      title: `Front of “${it.name.trim() || 'new design'}”`,
+      onUse: (res, sess) => {
+        if (it.isNew) Object.assign(it, res); else it.frontNew = res;
+        it.frontSrc = sess.src; it.frontOpts = sess.lastOpts;
+        render();
+      },
+    });
+  } catch(e){ setStatus(`<span style="color:var(--clay)">Couldn't load the front image (${esc(e.message)})</span>`); }
 }
 
 /* ---------------- pending changes ---------------- */
@@ -469,6 +528,7 @@ function pending(){
     const nm = it.name.trim() || 'untitled';
     if (it.isNew && !it.removed) out.push(`add "${nm}"${it.backNew ? ' (front + back)' : ''}`);
     if (!it.isNew && !it.removed){
+      if (it.frontNew) out.push(`new front for "${nm}"`);
       if (it.backNew) out.push(it.back ? `new back for "${nm}"` : `add back to "${nm}"`);
       else if (it.backRemoved && it.back) out.push(`remove back of "${nm}"`);
     }
@@ -486,7 +546,7 @@ function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 function setStatus(html){ $('status').innerHTML = html; }
 
 const thumbCache = new Map();
-function thumbFor(it, img){ showThumb(it.file, it.dataUrl, img); }
+function thumbFor(it, img){ showThumb(it.file, it.frontNew ? it.frontNew.dataUrl : it.dataUrl, img); }
 function showThumb(file, dataUrl, img){
   if (dataUrl){ img.src = dataUrl; return; }
   if (thumbCache.has(file)){ img.src = thumbCache.get(file); return; }
@@ -516,7 +576,7 @@ function render(){
     const badge = (cls, txt) => { const b = document.createElement('span'); b.className = 'badge ' + cls; b.textContent = txt; badges.append(b); };
     if (it.isNew) badge('n', 'New');
     if (idx === firstKept) badge('f', 'Front');
-    if (it.isNew && it.opaque) badge('w', 'No transparency');
+    if ((it.isNew && it.opaque) || (it.frontNew && it.frontNew.opaque)) badge('w', 'No transparency');
     const hasBack = !!(it.backNew || (it.back && !it.backRemoved));
     if (hasBack && !it.removed) badge('t', 'Turns');
     if (it.backNew && it.backNew.opaque) badge('w', 'Back: no transparency');
@@ -538,15 +598,9 @@ function render(){
       b.addEventListener('click', fn); sides.append(b);
     };
     if (!it.removed){
-      if (!hasBack) mkSide('+ Back side', 'Upload the back of this shirt', () => pickBack(it));
-      else {
-        mkSide('Edit back', 'Clean up and line up the back image', () => editBack(it));
-        mkSide('Replace', 'Upload a different back image', () => pickBack(it));
-        mkSide('Remove', 'Remove the back image', () => {
-          it.backNew = null; it.backRemoved = true;
-          render();
-        }, 'del');
-      }
+      mkSide('✎ Front', 'Edit the front: remove the background, trim and resize', () => editFront(it));
+      if (!hasBack) mkSide('+ Back', 'Add the back of this shirt (it will turn in the shop)', () => pickBack(it));
+      else mkSide('✎ Back', 'Edit the back: clean up, line up, replace or remove it', () => editBack(it));
     }
 
     const name = document.createElement('input');
@@ -572,15 +626,23 @@ function render(){
 }
 let backTarget = null;
 function pickBack(it){ backTarget = it; $('backFile').click(); }
+const hasBackSide = it => !!(it.backNew || (it.back && !it.backRemoved));
 async function setBack(file){
   const it = backTarget; backTarget = null;
   if (!it || !file) return;
-  it.backOpts = null;                      /* new photo: start from fresh defaults */
-  openBackEditor(it, URL.createObjectURL(file));
+  openBackSession(it, URL.createObjectURL(file), null);   /* new photo: fresh defaults */
 }
 async function editBack(it){
-  try { openBackEditor(it, it.backNew && it.backSrc ? it.backSrc : await fileSrc(it.back)); }
+  try { openBackSession(it, it.backNew && it.backSrc ? it.backSrc : await fileSrc(it.back), it.backOpts); }
   catch(e){ setStatus(`<span style="color:var(--clay)">Couldn't load the back image (${esc(e.message)})</span>`); }
+}
+function openBackSession(it, src, opts){
+  openEditor({
+    mode: 'back', it, src, opts, canRemove: hasBackSide(it),
+    title: `Back of “${it.name.trim() || 'new design'}”`,
+    onUse: (res, sess) => { it.backNew = res; it.backRemoved = false; it.backSrc = sess.src; it.backOpts = sess.lastOpts; render(); },
+    onRemove: () => { it.backNew = null; it.backRemoved = true; render(); },
+  });
 }
 
 /* ================= back-side editor =================
@@ -635,7 +697,7 @@ function medianLab(data, alphaMin){
 
 /* where the front's shirt sits, so the back can be laid over it exactly */
 async function frontInfo(it){
-  const src = it.dataUrl || await fileSrc(it.file);
+  const src = (it.frontNew && it.frontNew.dataUrl) || it.dataUrl || await fileSrc(it.file);
   const img = await loadImg(src);
   const w = img.naturalWidth, h = img.naturalHeight;
   const { data } = readPixels(img, Math.max(w, h));
@@ -796,10 +858,47 @@ function maskBox(an, m){
   return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, kept };
 }
 
-function composeBack(an, m, bb, front, opts){
-  const out = document.createElement('canvas'); out.width = front.w; out.height = front.h;
+/* draw the shirt's region of the photo into a rect of `out`, cut out by the mask */
+function paintCut(an, m, bb, out, dx, dy, dw, dh, remove){
   const ctx = out.getContext('2d', { willReadFrequently: true });
   ctx.imageSmoothingQuality = 'high';
+  const k = 1 / an.s;
+  ctx.drawImage(an.img, bb.x * k, bb.y * k, bb.w * k, bb.h * k, dx, dy, dw, dh);
+  if (remove){
+    const mc = document.createElement('canvas'); mc.width = an.W; mc.height = an.H;
+    const mx = mc.getContext('2d'), md = mx.createImageData(an.W, an.H);
+    for (let i = 0; i < an.n; i++){ md.data[i * 4] = md.data[i * 4 + 1] = md.data[i * 4 + 2] = 255; md.data[i * 4 + 3] = Math.round(m[i] * 255); }
+    mx.putImageData(md, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(mc, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  const id = ctx.getImageData(0, 0, out.width, out.height), d = id.data;
+  if (remove && an.bgRGB){
+    /* strip the background colour that bleeds into the soft edge (halo) */
+    const bgc = an.bgRGB;
+    for (let o = 0; o < d.length; o += 4){
+      const a = d[o + 3];
+      if (a === 0 || a === 255) continue;
+      const al = Math.max(a / 255, 0.2);
+      for (let c = 0; c < 3; c++) d[o + c] = Math.max(0, Math.min(255, (d[o + c] - (1 - al) * bgc[c]) / al));
+    }
+  }
+  return { ctx, id, d };
+}
+/* a front on its own: trimmed to the shirt with a small margin, at the rack's scale */
+function composeFront(an, m, bb, remove){
+  const k = 1 / an.s, pad = Math.round(Math.max(bb.w, bb.h) * 0.03);
+  const sc = Math.min(1, MAX_SIDE / ((Math.max(bb.w, bb.h) + pad * 2) * k));
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round((bb.w + pad * 2) * k * sc));
+  out.height = Math.max(1, Math.round((bb.h + pad * 2) * k * sc));
+  const { ctx, id } = paintCut(an, m, bb, out, pad * k * sc, pad * k * sc, bb.w * k * sc, bb.h * k * sc, remove);
+  ctx.putImageData(id, 0, 0);
+  return out;
+}
+function composeBack(an, m, bb, front, opts){
+  const out = document.createElement('canvas'); out.width = front.w; out.height = front.h;
   let dx, dy, dw, dh;
   if (opts.fit){
     /* same width and top as the front's shirt; fix small ratio differences
@@ -811,28 +910,7 @@ function composeBack(an, m, bb, front, opts){
     const sc = Math.min(front.w * 0.94 / bb.w, front.h * 0.94 / bb.h);
     dw = bb.w * sc; dh = bb.h * sc; dx = (front.w - dw) / 2; dy = (front.h - dh) / 2;
   }
-  const k = 1 / an.s;
-  ctx.drawImage(an.img, bb.x * k, bb.y * k, bb.w * k, bb.h * k, dx, dy, dw, dh);
-  if (opts.remove){
-    const mc = document.createElement('canvas'); mc.width = an.W; mc.height = an.H;
-    const mx = mc.getContext('2d'), md = mx.createImageData(an.W, an.H);
-    for (let i = 0; i < an.n; i++){ md.data[i * 4] = md.data[i * 4 + 1] = md.data[i * 4 + 2] = 255; md.data[i * 4 + 3] = Math.round(m[i] * 255); }
-    mx.putImageData(md, 0, 0);
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.drawImage(mc, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-  const id = ctx.getImageData(0, 0, out.width, out.height), d = id.data;
-  if (opts.remove && an.bgRGB){
-    /* strip the background colour that bleeds into the soft edge (halo) */
-    const bgc = an.bgRGB;
-    for (let o = 0; o < d.length; o += 4){
-      const a = d[o + 3];
-      if (a === 0 || a === 255) continue;
-      const al = Math.max(a / 255, 0.2);
-      for (let c = 0; c < 3; c++) d[o + c] = Math.max(0, Math.min(255, (d[o + c] - (1 - al) * bgc[c]) / al));
-    }
-  }
+  const { ctx, id, d } = paintCut(an, m, bb, out, dx, dy, dw, dh, opts.remove);
   if (opts.tone && front.med){
     /* move the fabric's colour and brightness toward the front's (median, so prints don't skew it) */
     const bm = medianLab(d, 218);
@@ -853,30 +931,48 @@ function composeBack(an, m, bb, front, opts){
   return out;
 }
 
-const BE = { it: null, an: null, front: null, out: null, src: null, timer: 0 };
+/* one editing session: { mode: 'front'|'back', it, src, opts, title, onUse, onCancel, onRemove, canRemove } */
+const BE = { session: null, an: null, front: null, out: null, timer: 0 };
 function beNote(html){ $('beNote').innerHTML = html; }
-const BE_HELP = 'Works best when the shirt is photographed on a plain background that contrasts with it. Use the faint front to check the outline lines up.';
-async function openBackEditor(it, src){
+const BE_HELP = {
+  back: 'Works best when the shirt is photographed on a plain background that contrasts with it. Use the faint front to check the outline lines up.',
+  front: 'Works best when the shirt is photographed on a plain background that contrasts with it.',
+};
+async function openEditor(session){
+  const { mode, it, src } = session;
+  const back = mode === 'back';
   $('be').hidden = false;
   document.body.style.overflow = 'hidden';
-  $('beTitle').textContent = `Back of “${it.name.trim() || 'new design'}”`;
+  $('beTag').textContent = back ? 'Back side' : 'Front side';
+  $('beTitle').textContent = session.title;
+  $('beCap1').textContent = back ? 'Front' : 'Photo';
+  $('beCap2').textContent = back ? 'Back' : 'Front';
+  $('beFront').alt = back ? 'Front of the shirt' : 'The original photo';
+  $('beFig3').hidden = !back;
+  $('beCmp').classList.toggle('two', !back);
+  $('beBackOnly').hidden = !back;
+  $('beDrop').hidden = !(back && session.canRemove);
+  $('beUse').textContent = back ? 'Use this back' : 'Use this front';
   $('beUse').disabled = true;
   beNote('<span class="spin"></span>Analysing the photo…');
-  const ctx = $('beBack').getContext('2d'); ctx.clearRect(0, 0, $('beBack').width, $('beBack').height);
-  Object.assign(BE, { it, an: null, front: null, out: null, src });
+  const cv = $('beBack'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  Object.assign(BE, { session, an: null, front: null, out: null });
   try {
-    const [front, img] = await Promise.all([frontInfo(it), loadImg(src)]);
-    if (BE.it !== it) return;
+    const [front, img] = await Promise.all([back ? frontInfo(it) : null, loadImg(src)]);
+    if (BE.session !== session) return;
     const an = analyseBack(img);
     Object.assign(BE, { an, front });
-    for (const id of ['beFront', 'beGhost', 'beTurnF']) $(id).src = front.src;
-    const o = it.backOpts || {};
+    if (back) for (const id of ['beFront', 'beGhost', 'beTurnF']) $(id).src = front.src;
+    else $('beFront').src = src;
+    const o = session.opts || {};
     $('beRemove').disabled = !an.isPhoto;
     $('beRemove').checked = an.isPhoto && (o.remove ?? true);
     $('beStrength').value = o.T ?? Math.round(an.autoT);
-    $('beFit').disabled = !front.cut;          /* nothing to line up with if the front has no outline */
-    $('beFit').checked = front.cut && (o.fit ?? true);
-    $('beTone').checked = o.tone ?? true;
+    if (back){
+      $('beFit').disabled = !front.cut;          /* nothing to line up with if the front has no outline */
+      $('beFit').checked = front.cut && (o.fit ?? true);
+      $('beTone').checked = o.tone ?? true;
+    }
     beCompute();
   } catch(e){
     beNote(`<span style="color:var(--clay)">Couldn't read that image (${esc(e.message)}).</span>`);
@@ -884,44 +980,56 @@ async function openBackEditor(it, src){
 }
 function beSchedule(){ clearTimeout(BE.timer); BE.timer = setTimeout(beCompute, 70); }
 function beCompute(){
-  const { an, front } = BE;
-  if (!an) return;
+  const { an, front, session } = BE;
+  if (!an || !session) return;
+  const back = session.mode === 'back';
   const remove = $('beRemove').checked;
   $('beStrength').disabled = !remove;
   $('beStrengthRow').style.opacity = remove ? 1 : .4;
-  $('beGhost').hidden = !$('beGhostOn').checked;
+  $('beGhost').hidden = !back || !$('beGhostOn').checked;
   const m = remove ? segment(an, +$('beStrength').value) : alphaMask(an);
   const bb = maskBox(an, m);
   if (!bb){ $('beUse').disabled = true; beNote('<span class="warn">Nothing is left — the whole image looks like background. Slide toward Gentle, or switch off background removal.</span>'); return; }
-  const out = composeBack(an, m, bb, front, { remove, fit: $('beFit').checked, tone: $('beTone').checked });
+  const out = back
+    ? composeBack(an, m, bb, front, { remove, fit: $('beFit').checked, tone: $('beTone').checked })
+    : composeFront(an, m, bb, remove);
   BE.out = out;
   const cv = $('beBack'); cv.width = out.width; cv.height = out.height;
   cv.getContext('2d').drawImage(out, 0, 0);
-  $('beTurnB').src = out.toDataURL('image/png');
+  if (back) $('beTurnB').src = out.toDataURL('image/png');
   $('beUse').disabled = false;
   const visible = (an.box.x1 - an.box.x0 + 1) * (an.box.y1 - an.box.y0 + 1);
   const keptShare = remove ? bb.kept / visible : 0;
+  const backNote = !back && hasBackSide(session.it) ? ' This design has a back side — after changing the front, open <b>✎ Back</b> so it lines up with the new front.' : '';
   if (remove && keptShare < 0.06) beNote('<span class="warn">Most of the photo was removed. If the shirt is cut into, slide toward Gentle.</span>');
   else if (remove && keptShare > 0.9) beNote('<span class="warn">Couldn\'t find a background to remove. Is it plain and a different colour from the shirt?</span>');
-  else if (!an.isPhoto) beNote('This image already has a transparent background, so only the size, position and colour are adjusted.');
-  else beNote(BE_HELP);
+  else if (!an.isPhoto) beNote((back ? 'This image already has a transparent background, so only the size, position and colour are adjusted.'
+                                     : 'This image already has a transparent background, so it is only trimmed and resized.') + backNote);
+  else beNote(BE_HELP[session.mode] + backNote);
 }
-function closeBackEditor(){
+function closeEditor(){
   $('be').hidden = true;
   document.body.style.overflow = '';
-  BE.it = null; BE.an = null;
+  BE.session = null; BE.an = null;
 }
-function useBack(){
-  const { it, out } = BE;
-  if (!it || !out) return;
-  let dataUrl = out.toDataURL('image/webp', 0.9), ext = 'webp';
-  if (!dataUrl.startsWith('data:image/webp')){ dataUrl = out.toDataURL('image/png'); ext = 'png'; }
-  it.backNew = { dataUrl, ext, opaque: false };
-  it.backRemoved = false;
-  it.backSrc = BE.src;
-  it.backOpts = { remove: $('beRemove').checked, T: +$('beStrength').value, fit: $('beFit').checked, tone: $('beTone').checked };
-  closeBackEditor();
-  render();
+function encodeShirt(canvas){
+  let dataUrl = canvas.toDataURL('image/webp', 0.9), ext = 'webp';
+  if (!dataUrl.startsWith('data:image/webp')){ dataUrl = canvas.toDataURL('image/png'); ext = 'png'; }
+  return { dataUrl, ext, opaque: false };
+}
+function useEdit(){
+  const { session, out } = BE;
+  if (!session || !out) return;
+  session.lastOpts = { remove: $('beRemove').checked, T: +$('beStrength').value, fit: $('beFit').checked, tone: $('beTone').checked };
+  const res = encodeShirt(out);
+  res.opaque = BE.an.isPhoto && !$('beRemove').checked;    /* a photo that kept its background */
+  closeEditor();
+  session.onUse(res, session);
+}
+function cancelEdit(){
+  const session = BE.session;
+  closeEditor();
+  if (session && session.onCancel) session.onCancel();
 }
 function move(idx, dir){
   const j = idx + dir;
@@ -980,6 +1088,11 @@ async function publish(){
         it.file = `${slug(it.name)}-${st}${n++ ? '-' + n : ''}.${it.ext}`;
         setStatus(`<span class="spin"></span>Uploading “${esc(it.name.trim())}”…`);
         await upload(it.dataUrl, it.file);
+      } else if (it.frontNew){
+        it.newFile = `${slug(it.name)}-${st}${n++ ? '-' + n : ''}.${it.frontNew.ext}`;
+        setStatus(`<span class="spin"></span>Uploading the new front of “${esc(it.name.trim())}”…`);
+        await upload(it.frontNew.dataUrl, it.newFile);
+        drop(it.file);
       }
       it.finalBack = it.backRemoved ? null : it.back;
       if (it.backNew){
@@ -991,7 +1104,7 @@ async function publish(){
     }
 
     const kept = items.filter(i => !i.removed);
-    const text = JSON.stringify(kept.map(i => ({ file: i.file, name: i.name.trim(), ...(i.finalBack ? { back: i.finalBack } : {}) })), null, 2) + '\n';
+    const text = JSON.stringify(kept.map(i => ({ file: i.newFile || i.file, name: i.name.trim(), ...(i.finalBack ? { back: i.finalBack } : {}) })), null, 2) + '\n';
     tree.push({ path: `${CFG.dir}/manifest.json`, mode: '100644', type: 'blob', content: text });
 
     setStatus('<span class="spin"></span>Saving to GitHub…');
@@ -1006,15 +1119,15 @@ async function publish(){
     }
 
     base = { sha: c.sha, text };
-    items = kept.map(i => ({ ...fromManifest({ file: i.file, name: i.name.trim(), back: i.finalBack }),
-      dataUrl: i.dataUrl, backDataUrl: i.backNew ? i.backNew.dataUrl : (i.finalBack ? i.backDataUrl : null) }));
+    items = kept.map(i => ({ ...fromManifest({ file: i.newFile || i.file, name: i.name.trim(), back: i.finalBack }),
+      dataUrl: i.frontNew ? i.frontNew.dataUrl : i.dataUrl, backDataUrl: i.backNew ? i.backNew.dataUrl : (i.finalBack ? i.backDataUrl : null) }));
     busy = false;
     render();
     waitForLive(text);
   } catch(e){
     busy = false; updateBar();
     setStatus(`<span style="color:var(--clay)">Publish failed: ${esc(e.message)}</span>`);
-    items.forEach(i => { if (i.isNew) i.file = null; delete i.finalBack; });
+    items.forEach(i => { if (i.isNew) i.file = null; delete i.finalBack; delete i.newFile; });
   }
 }
 
@@ -1052,9 +1165,23 @@ fileIn.addEventListener('change', () => { addFiles(fileIn.files); fileIn.value =
 $('backFile').addEventListener('change', () => { const f = $('backFile').files[0]; $('backFile').value = ''; setBack(f); });
 ['beRemove', 'beFit', 'beTone', 'beGhostOn'].forEach(id => $(id).addEventListener('change', beSchedule));
 $('beStrength').addEventListener('input', beSchedule);
-$('beCancel').addEventListener('click', closeBackEditor);
-$('beUse').addEventListener('click', useBack);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('be').hidden) closeBackEditor(); });
+$('beCancel').addEventListener('click', cancelEdit);
+$('beUse').addEventListener('click', useEdit);
+$('beOther').addEventListener('click', () => $('editorFile').click());
+$('editorFile').addEventListener('change', () => {
+  const f = $('editorFile').files[0]; $('editorFile').value = '';
+  const session = BE.session;
+  if (!f || !session) return;
+  session.src = URL.createObjectURL(f); session.opts = null;   /* a different photo: fresh defaults */
+  openEditor(session);
+});
+$('beDrop').addEventListener('click', () => {
+  const session = BE.session;
+  if (!session || !session.onRemove) return;
+  closeEditor();
+  session.onRemove();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('be').hidden) cancelEdit(); });
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
