@@ -100,6 +100,17 @@ nav .menu-btn{
   padding:.5rem .75rem;border-radius:8px;cursor:pointer;transition:.25s;
 }
 nav .menu-btn:hover{border-color:var(--neon);color:var(--neon)}
+.nav-left{display:flex;align-items:center;gap:.9rem}
+.drop-pill{
+  display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;
+  background:rgba(53,224,105,.08);border:1px solid rgba(53,224,105,.55);color:var(--neon);
+  border-radius:999px;padding:.42rem .8rem;transition:background .25s,box-shadow .25s;
+  font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;
+}
+.drop-pill[hidden]{display:none}
+.drop-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px var(--neon);animation:dropPulse 1.6s ease-in-out infinite}
+.drop-pill:hover{background:rgba(53,224,105,.16);box-shadow:0 0 18px rgba(53,224,105,.25)}
+@keyframes dropPulse{0%,100%{opacity:1}50%{opacity:.3}}
 a:focus-visible,button:focus-visible{outline:2px solid var(--neon);outline-offset:3px}
 
 /* ---------- hero ---------- */
@@ -574,6 +585,91 @@ body.lightsout .neon-shop .flick{
 .lb-nav:hover{color:var(--neon);border-color:var(--neon)}
 #lb-prev{left:1.2rem}#lb-next{right:1.2rem}
 
+/* ---------- new drop pop-up ---------- */
+#drop{
+  position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;
+  background:rgba(6,7,6,.88);backdrop-filter:blur(8px);padding:1.25rem;
+}
+#drop.open{display:flex}
+.drop-card{
+  position:relative;width:min(760px,100%);max-height:calc(100svh - 2.5rem);overflow:auto;
+  background:linear-gradient(180deg,#13150f,#0d0f0a);border:1px solid #262a20;border-radius:20px;
+  padding:1.5rem 1.4rem 1.3rem;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,.7);
+  animation:dropIn .45s cubic-bezier(.2,.9,.3,1.15);
+}
+@keyframes dropIn{from{transform:translateY(24px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.drop-card .tag{display:block;color:var(--neon)}
+.drop-card .tag[hidden]{display:none}
+.drop-card:focus{outline:none}
+.drop-card h2{
+  font-family:'Sedgwick Ave Display',cursive;font-weight:400;font-size:clamp(2rem,6vw,3rem);
+  color:var(--sand);margin:.2rem 0 .35rem;
+}
+.drop-card .cap{color:var(--dim);font-size:.92rem;line-height:1.6;max-width:46ch;margin:0 auto 1.1rem}
+.drop-card .cap[hidden]{display:none}
+#dropClose{position:absolute;top:.55rem;right:.9rem;background:none;border:none;color:var(--sand);font-size:2rem;line-height:1;cursor:pointer}
+.reel-view{
+  position:relative;margin:0 auto;aspect-ratio:9/16;max-width:100%;
+  height:min(66svh,620px,calc((100vw - 5rem) * 16 / 9));
+  border-radius:14px;overflow:hidden;background:#000;border:1px solid #262a20;box-shadow:0 20px 50px rgba(0,0,0,.55);
+}
+.reels{
+  height:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.reels::-webkit-scrollbar{display:none}
+.reel{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;background:#000 center/cover no-repeat}
+.reel video{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.reel .snd{
+  position:absolute;right:.6rem;bottom:.6rem;width:40px;height:40px;border-radius:50%;border:none;
+  background:rgba(8,9,7,.72);color:var(--sand);font-size:1rem;cursor:pointer;backdrop-filter:blur(4px);
+}
+.reel .nope{
+  position:absolute;inset:auto 0 0 0;padding:2.2rem .8rem .9rem;display:none;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));color:var(--sand);font-size:.78rem;line-height:1.5;
+}
+.reel.broken video,.reel.broken .snd{display:none}
+.reel.broken .nope{display:block}
+.reel .nope a{color:var(--neon)}
+/* side controls: up, one dot per reel, down */
+.reel-side{
+  position:absolute;right:.55rem;top:50%;transform:translateY(-50%);z-index:2;
+  display:flex;flex-direction:column;align-items:center;gap:.55rem;
+}
+.reel-side .arrow{
+  width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;line-height:1;font-size:.95rem;
+  background:rgba(8,9,7,.65);color:var(--sand);backdrop-filter:blur(4px);transition:opacity .25s,color .25s;
+}
+.reel-side .arrow:hover{color:var(--neon)}
+.reel-side .arrow:disabled{opacity:.25;cursor:default}
+.reel-dots{display:flex;flex-direction:column;gap:7px}
+.reel-dots button{width:8px;height:8px;padding:0;border-radius:50%;cursor:pointer;border:1px solid rgba(232,230,221,.75);background:rgba(0,0,0,.3);transition:.25s}
+.reel-dots button.on{background:var(--neon);border-color:var(--neon);box-shadow:0 0 8px rgba(53,224,105,.7)}
+.reel-hint{
+  position:absolute;left:50%;bottom:4.2rem;transform:translateX(-50%);z-index:2;pointer-events:none;white-space:nowrap;
+  font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);
+  background:rgba(8,9,7,.7);backdrop-filter:blur(4px);padding:.45rem .8rem;border-radius:999px;
+  animation:hintBob 1.8s ease-in-out infinite;transition:opacity .4s;
+}
+@keyframes hintBob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-6px)}}
+.reel-view.scrolled .reel-hint{opacity:0}
+.reel-view.single .reel-side,.reel-view.single .reel-hint{display:none}
+.drop-actions{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-top:1.2rem}
+.drop-actions a,.drop-actions button{
+  background:none;border:1px solid var(--sage);color:var(--sand);text-decoration:none;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:.74rem;letter-spacing:.1em;
+  padding:.65rem 1.25rem;border-radius:999px;transition:.25s;
+}
+.drop-actions a:hover,.drop-actions button:hover{border-color:var(--neon);color:var(--neon)}
+.drop-actions .go{background:var(--neon);border-color:var(--neon);color:#07110a;font-weight:700}
+.drop-actions .go:hover{color:#07110a;filter:brightness(1.1)}
+.drop-actions a[hidden]{display:none}
+@media (max-width:640px){
+  .drop-card{padding:1.2rem 1.1rem 1.1rem}
+  .reel-view{height:min(64svh,calc((100vw - 4.7rem) * 16 / 9))}
+}
+@media (prefers-reduced-motion:reduce){ .reel-hint{animation:none} }
+
 /* ---------- feature cards ---------- */
 #different .grid{
   max-width:1150px;margin:0 auto;display:grid;gap:1.6rem;
@@ -714,7 +810,10 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
 </svg>
 
 <nav id="mainnav">
-  <a class="logo" href="#top">SAPIENs</a>
+  <div class="nav-left">
+    <a class="logo" href="#top">SAPIENs</a>
+    <button class="drop-pill" id="dropPill" type="button" hidden>New drop</button>
+  </div>
   <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="navlinks">☰ Menu</button>
   <div class="links" id="navlinks">
     <a href="#roller">The Shop</a>
@@ -925,6 +1024,28 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
   <span class="l">SAPIENs</span>
   <span class="r">Evolutionary fashion for all species</span>
 </footer>
+
+<div id="drop" role="dialog" aria-modal="true" aria-labelledby="dropTitle">
+  <div class="drop-card" tabindex="-1">
+    <button id="dropClose" type="button" aria-label="Close">×</button>
+    <span class="tag" id="dropTag">● New drop</span>
+    <h2 id="dropTitle">New drop</h2>
+    <p class="cap" id="dropCap" hidden></p>
+    <div class="reel-view" id="reelView">
+      <div class="reels" id="reels" tabindex="-1" aria-label="Reels — scroll or swipe up and down"></div>
+      <div class="reel-side">
+        <button class="arrow" id="reelUp" type="button" aria-label="Previous reel">▲</button>
+        <div class="reel-dots" id="reelDots"></div>
+        <button class="arrow" id="reelDown" type="button" aria-label="Next reel">▼</button>
+      </div>
+      <div class="reel-hint" id="reelHint" aria-hidden="true">Scroll for the next reel ↓</div>
+    </div>
+    <div class="drop-actions">
+      <button class="go" id="dropShop" type="button">Step into the shop</button>
+      <a id="dropLink" target="_blank" rel="noopener" hidden>Watch on Instagram ↗</a>
+    </div>
+  </div>
+</div>
 
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Design preview">
   <button class="close" aria-label="Close preview">×</button>
@@ -1374,6 +1495,7 @@ function likeBurst(x, y){
 
 /* keyboard */
 document.addEventListener('keydown', e=>{
+  if (document.getElementById('drop').classList.contains('open')) return;
   if (lb.classList.contains('open')){
     if (e.key === 'Escape') closeLB();
     if (e.key === 'ArrowRight') lbStep(1);
@@ -1528,6 +1650,153 @@ navEl.querySelectorAll('.links a').forEach(a=>a.addEventListener('click', ()=>{
   navEl.classList.remove('open');
   menuBtn.setAttribute('aria-expanded', 'false');
 }));
+
+/* ================= NEW DROP POP-UP =================
+   drops/drop.json (edited from admin.html). It opens by itself once per device
+   per drop: a new drop gets a new id, so everyone sees it once more. The
+   "New drop" button in the nav replays it any time. */
+const dropEl = document.getElementById('drop'), reelsEl = document.getElementById('reels');
+const dropPill = document.getElementById('dropPill'), dotsEl = document.getElementById('reelDots');
+const reelView = document.getElementById('reelView');
+const DROP_SEEN = 'sapiens-drop-seen';
+let drop = null, dropFocus = null;
+const seenStore = {
+  get(){ try { return localStorage.getItem(DROP_SEEN); } catch(e){ return null; } },
+  set(v){ try { localStorage.setItem(DROP_SEEN, v); } catch(e){} },
+};
+const track = (name, params) => { try { if (typeof gtag === 'function') gtag('event', name, params || {}); } catch(e){} };
+
+function muteAll(){
+  reelsEl.querySelectorAll('video').forEach(v => { v.muted = true; });
+  reelsEl.querySelectorAll('.snd').forEach(b => { b.textContent = '🔇'; b.setAttribute('aria-label', 'Turn sound on'); });
+}
+function toggleSound(vid, btn){
+  const turnOn = vid.muted;
+  muteAll();
+  if (turnOn){
+    vid.muted = false; vid.play().catch(()=>{});
+    btn.textContent = '🔊'; btn.setAttribute('aria-label', 'Turn sound off');
+    track('drop_sound_on', { drop_id: drop && drop.id });
+  }
+}
+function buildDrop(d){
+  const title = (d.title || '').trim() || 'New drop';
+  document.getElementById('dropTitle').textContent = title;
+  document.getElementById('dropTag').hidden = /^new drop$/i.test(title);   /* don't say it twice */
+  const cap = document.getElementById('dropCap');
+  cap.textContent = d.caption || ''; cap.hidden = !d.caption;
+  const link = document.getElementById('dropLink');
+  const okLink = typeof d.link === 'string' && /^https:\/\//.test(d.link);
+  if (okLink) link.href = d.link;
+  link.hidden = !okLink;
+  reelsEl.replaceChildren(); dotsEl.replaceChildren();
+  reelView.classList.toggle('single', d.videos.length === 1);
+  document.getElementById('reelHint').textContent = isTouch ? 'Swipe up for the next reel ↑' : 'Scroll for the next reel ↓';
+  d.videos.forEach((v, i) => {
+    const box = document.createElement('div'); box.className = 'reel';
+    if (v.poster) box.style.backgroundImage = `url("drops/${encodeURI(v.poster)}")`;
+    const vid = document.createElement('video');
+    vid.muted = true; vid.defaultMuted = true; vid.loop = true; vid.playsInline = true;
+    vid.setAttribute('muted', ''); vid.setAttribute('playsinline', '');
+    vid.preload = 'none';                         /* nothing downloads until the pop-up opens */
+    if (v.poster) vid.poster = 'drops/' + v.poster;
+    vid.src = 'drops/' + v.file;
+    vid.setAttribute('aria-label', `Reel ${i + 1} of ${d.videos.length}`);
+    if (reduceMotion) vid.controls = true;
+    const snd = document.createElement('button');
+    snd.className = 'snd'; snd.type = 'button'; snd.textContent = '🔇'; snd.setAttribute('aria-label', 'Turn sound on');
+    snd.addEventListener('click', e => { e.stopPropagation(); toggleSound(vid, snd); });
+    if (!reduceMotion) vid.addEventListener('click', () => toggleSound(vid, snd));
+    const nope = document.createElement('div'); nope.className = 'nope';
+    nope.innerHTML = okLink ? 'This video can\'t play in your browser. <a target="_blank" rel="noopener">Watch it on Instagram ↗</a>'
+                            : 'This video can\'t play in your browser.';
+    if (okLink) nope.querySelector('a').href = d.link;
+    vid.addEventListener('error', () => box.classList.add('broken'));
+    box.append(vid, snd, nope);
+    reelsEl.append(box);
+    const dot = document.createElement('button');
+    dot.type = 'button'; dot.setAttribute('aria-label', `Reel ${i + 1}`);
+    dot.addEventListener('click', () => goReel(i));
+    dotsEl.append(dot);
+  });
+}
+/* Reels-style: one at a time, scroll / swipe / arrows / dots to move between them */
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const reelIndex = () => Math.round(reelsEl.scrollTop / Math.max(1, reelsEl.clientHeight));
+function goReel(i){
+  const n = reelsEl.children.length;
+  i = Math.max(0, Math.min(n - 1, i));
+  reelsEl.scrollTo({ top: i * reelsEl.clientHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
+}
+function syncReelUI(){
+  const i = reelIndex(), n = reelsEl.children.length;
+  [...dotsEl.children].forEach((d, k) => d.classList.toggle('on', k === i));
+  document.getElementById('reelUp').disabled = i <= 0;
+  document.getElementById('reelDown').disabled = i >= n - 1;
+  if (i > 0) reelView.classList.add('scrolled');       /* they've found it: drop the hint */
+}
+let reelScrollT = 0;
+reelsEl.addEventListener('scroll', () => { cancelAnimationFrame(reelScrollT); reelScrollT = requestAnimationFrame(syncReelUI); }, { passive: true });
+document.getElementById('reelUp').addEventListener('click', () => goReel(reelIndex() - 1));
+document.getElementById('reelDown').addEventListener('click', () => goReel(reelIndex() + 1));
+/* play what's on screen (both on desktop; the swiped-to one on phones) */
+const reelIO = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+  for (const en of entries){
+    const v = en.target.querySelector('video');
+    if (!dropEl.classList.contains('open') || reduceMotion) continue;
+    if (en.isIntersecting) v.play().catch(()=>{}); else { v.pause(); }
+  }
+}, { root: reelsEl, threshold: 0.6 }) : null;
+function openDrop(auto){
+  if (!drop || dropEl.classList.contains('open') || lb.classList.contains('open')) return;
+  dropFocus = document.activeElement;
+  dropEl.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  seenStore.set(drop.id);
+  reelsEl.scrollTop = 0;
+  reelView.classList.remove('scrolled');
+  syncReelUI();
+  reelsEl.querySelectorAll('video').forEach(v => { v.preload = 'auto'; });
+  if (reelIO){ [...reelsEl.children].forEach(r => { reelIO.unobserve(r); reelIO.observe(r); }); }
+  else if (!reduceMotion) reelsEl.querySelectorAll('video').forEach(v => v.play().catch(()=>{}));
+  dropEl.querySelector('.drop-card').focus({ preventScroll: true });
+  track('drop_popup_open', { trigger: auto ? 'auto' : 'button', drop_id: drop.id });
+}
+function closeDrop(){
+  if (!dropEl.classList.contains('open')) return;
+  dropEl.classList.remove('open');
+  reelsEl.querySelectorAll('video').forEach(v => v.pause());
+  muteAll();
+  if (!lb.classList.contains('open')) document.body.style.overflow = '';
+  if (dropFocus && dropFocus.focus) dropFocus.focus();
+}
+document.getElementById('dropClose').addEventListener('click', closeDrop);
+dropEl.addEventListener('click', e => { if (e.target === dropEl) closeDrop(); });
+document.addEventListener('keydown', e => {
+  if (!dropEl.classList.contains('open')) return;
+  if (e.key === 'Escape') closeDrop();
+  else if (e.key === 'ArrowDown' || e.key === 'PageDown'){ e.preventDefault(); goReel(reelIndex() + 1); }
+  else if (e.key === 'ArrowUp' || e.key === 'PageUp'){ e.preventDefault(); goReel(reelIndex() - 1); }
+});
+document.getElementById('dropShop').addEventListener('click', () => {
+  track('drop_cta_shop', { drop_id: drop && drop.id });
+  closeDrop();
+  document.getElementById('roller').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+});
+document.getElementById('dropLink').addEventListener('click', () => track('drop_cta_instagram', { drop_id: drop && drop.id }));
+dropPill.addEventListener('click', () => { buzz(6); openDrop(false); });
+(async () => {
+  try {
+    const r = await fetch('drops/drop.json', { cache: 'no-cache' });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || !d.active || !d.id || !Array.isArray(d.videos) || !d.videos.length) return;
+    drop = d;
+    buildDrop(d);
+    dropPill.hidden = false;
+    if (seenStore.get() !== d.id) setTimeout(() => openDrop(true), 1800);
+  } catch(e){}
+})();
 
 /* haptics on all remaining interactive elements */
 document.querySelectorAll('nav a, .links a, .insta-banner, footer a').forEach(el=>{

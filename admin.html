@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>SAPIENs Admin</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230b0c0a'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%2335e069' font-family='sans-serif' font-weight='bold'%3ES%3C/text%3E%3C/svg%3E">
@@ -111,6 +111,36 @@ details b{color:var(--ink);font-weight:500}
 .sides button:hover{border-color:var(--sage);color:var(--ink)}
 .sides button.del:hover{border-color:var(--clay);color:var(--clay)}
 .badge.t{color:#8ec5ff;border:1px solid rgba(142,197,255,.55)}
+
+/* ---- new drop pop-up ---- */
+#dropCard{margin-top:1.25rem}
+#dropCard .help b{color:var(--ink);font-weight:500}
+.dropfields{display:grid;grid-template-columns:1fr 1.4fr 1.4fr;gap:.8rem}
+.dropfields .field{margin-top:.8rem}
+.opt{color:#6b6e60}
+input[type=url]{background:#0d0f0b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:.75rem .85rem;font:inherit;font-size:.95rem;width:100%}
+.reelslots{display:grid;grid-template-columns:repeat(2,minmax(0,190px));gap:.9rem;margin:1.1rem 0 .3rem}
+.reelslot{position:relative;aspect-ratio:9/16;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000 center/cover no-repeat}
+.reelslot video{width:100%;height:100%;object-fit:cover;display:block}
+.reelslot .meta{position:absolute;top:.45rem;left:.45rem;right:.45rem;display:flex;gap:.3rem;flex-wrap:wrap;pointer-events:none}
+.reelslot .rtools{position:absolute;left:.45rem;right:.45rem;bottom:.45rem;display:flex;gap:.35rem}
+.reelslot .rtools button{
+  flex:1;background:rgba(8,9,7,.82);border:1px solid var(--line);color:var(--sand);border-radius:8px;
+  padding:.45rem .2rem;font-family:'Space Mono',monospace;font-size:.64rem;letter-spacing:.04em;transition:.2s;
+}
+.reelslot .rtools button:hover{border-color:var(--sage);color:var(--ink)}
+.reelslot .rtools button.del:hover{border-color:var(--clay);color:var(--clay)}
+.reelslot.empty{
+  border:1.5px dashed var(--sage);background:rgba(138,148,100,.04);cursor:pointer;color:var(--dim);
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:1rem;font-size:.85rem;line-height:1.5;
+}
+.reelslot.empty:hover,.reelslot.empty:focus-visible{border-color:var(--neon);color:var(--ink)}
+.reelslot.empty b{display:block;color:var(--sand);font-weight:500;font-size:1.4rem}
+#dropErr{margin-top:.5rem}
+@media (max-width:620px){
+  .dropfields{grid-template-columns:1fr;gap:0}
+  .reelslots{grid-template-columns:repeat(2,1fr)}
+}
 
 /* ---- back-side editor ---- */
 .modal{
@@ -239,6 +269,22 @@ details b{color:var(--ink);font-weight:500}
       </div>
       <input type="file" id="file" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
       <input type="file" id="backFile" accept="image/png,image/webp,image/jpeg,image/*" hidden>
+    </div>
+
+    <div class="card" id="dropCard">
+      <h2>New drop pop-up <span class="count" id="dropState"></span></h2>
+      <p class="help">Up to two reels that pop up on the shop. Each visitor sees it by itself <b>once per drop</b>, and a <b>● New drop</b> button in the shop's menu bar replays it any time. Uploading new reels counts as a new drop, so everyone sees it once more.</p>
+      <label class="check"><input type="checkbox" id="dropOn"><span>Show the pop-up on the shop</span></label>
+      <div class="dropfields">
+        <div class="field"><label for="dropTitleIn">Title</label><input type="text" id="dropTitleIn" maxlength="40" placeholder="New drop"></div>
+        <div class="field"><label for="dropCapIn">Caption <span class="opt">(optional)</span></label><input type="text" id="dropCapIn" maxlength="140" placeholder="Two new tees, live now."></div>
+        <div class="field"><label for="dropLinkIn">Instagram link <span class="opt">(optional)</span></label><input type="url" id="dropLinkIn" inputmode="url" placeholder="https://www.instagram.com/reel/…"></div>
+      </div>
+      <div class="reelslots" id="reelSlots"></div>
+      <p class="help" style="font-size:.8rem">MP4 works everywhere. iPhone tip: set <b>Settings → Camera → Formats</b> to <b>Most Compatible</b>, or save the reel from Instagram/CapCut as MP4. Up to 100 MB each; under 25 MB loads fast on phones.</p>
+      <label class="check" id="dropReshowRow"><input type="checkbox" id="dropReshow"><span>Show it again to visitors who've already seen it</span></label>
+      <p class="err" id="dropErr" hidden></p>
+      <input type="file" id="reelFile" accept="video/mp4,video/quicktime,video/webm,video/*" hidden>
     </div>
 
     <div class="card" id="rackCard">
@@ -404,6 +450,9 @@ async function load(){
   const text = await manifestAt(sha);
   base = { sha, text };
   items = JSON.parse(text).map(fromManifest);
+  const dt = await textAt(DROP_FILE, sha);
+  dropBase = { text: dt, data: dt ? JSON.parse(dt) : null };
+  resetDropDraft();
   render();
 }
 
@@ -538,7 +587,7 @@ function pending(){
   const keptNow = items.filter(i => !i.isNew && !i.removed).map(i => i.file).join('|');
   const keptOrig = orig.map(d => d.file).filter(f => items.some(i => i.file === f && !i.removed)).join('|');
   if (keptNow !== keptOrig) out.push('reorder');
-  return out;
+  return out.concat(dropChanges());
 }
 
 /* ---------------- render ---------------- */
@@ -1043,13 +1092,162 @@ function remove(idx){
   else it.removed = true;
   render();
 }
+/* ================= new drop pop-up ================= */
+const DROPS_DIR = 'drops', DROP_FILE = 'drops/drop.json';
+const MAX_REEL = 95 * 1024 * 1024, BIG_REEL = 25 * 1024 * 1024;
+let dropBase = { text: null, data: null }, dropDraft = null, reelTarget = 0;
+const reelUrls = new Map();       /* reel file -> playable URL (local copy, or fetched from the repo) */
+const mb = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
+
+async function textAt(path, sha){
+  try { return b64ToText((await gh(repoPath(`/contents/${path}?ref=${sha}`))).content); }
+  catch(e){ if (e.status === 404) return null; throw e; }
+}
+function draftFrom(d){
+  return {
+    active: !!(d && d.active), title: (d && d.title) || 'New drop', caption: (d && d.caption) || '', link: (d && d.link) || '', reshow: false,
+    videos: d && Array.isArray(d.videos) ? d.videos.map(v => ({ file: v.file, poster: v.poster || null })) : [],
+  };
+}
+function resetDropDraft(){
+  dropDraft = draftFrom(dropBase.data);
+  $('dropTitleIn').value = dropDraft.title;
+  $('dropCapIn').value = dropDraft.caption;
+  $('dropLinkIn').value = dropDraft.link;
+  renderDrop();
+}
+function dropChanges(){
+  if (!dropDraft) return [];
+  const d = dropDraft, b = draftFrom(dropBase.data), out = [];
+  const vids = x => x.videos.map(v => v.newFile ? '+' : v.file);
+  const same = vids(d).slice().sort().join('|') === vids(b).slice().sort().join('|');
+  if (d.active !== b.active) out.push(d.active ? 'turn on the new-drop pop-up' : 'turn off the new-drop pop-up');
+  if (!same) out.push(`new-drop reels (${d.videos.length})`);
+  else if (vids(d).join('|') !== vids(b).join('|')) out.push('swap the new-drop reels');
+  if (d.title.trim() !== b.title.trim() || d.caption.trim() !== b.caption.trim() || d.link.trim() !== b.link.trim()) out.push('edit the new-drop pop-up');
+  if (d.reshow && same) out.push('show the new drop again to everyone');
+  return out;
+}
+function dropProblem(){
+  const d = dropDraft;
+  if (!d) return '';
+  if (d.active && !d.videos.length) return 'Add at least one reel, or switch the new-drop pop-up off.';
+  if (d.link.trim() && !/^https:\/\/\S+$/.test(d.link.trim())) return 'The Instagram link should start with https://';
+  return '';
+}
+async function reelSrc(file){
+  if (reelUrls.has(file)) return reelUrls.get(file);
+  const url = `${DROPS_DIR}/${file}`;
+  try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); if (r.ok){ reelUrls.set(file, url); return url; } } catch(e){}
+  const blob = await gh(repoPath(`/contents/${DROPS_DIR}/${encodeURIComponent(file)}?ref=${CFG.branch}`), { raw: true });
+  const u = URL.createObjectURL(blob); reelUrls.set(file, u); return u;
+}
+function renderDrop(){
+  const d = dropDraft;
+  if (!d) return;
+  $('dropOn').checked = d.active;
+  $('dropState').textContent = d.active ? (d.videos.length ? '· on' : '· on, no reels yet') : '· off';
+  const slots = $('reelSlots');
+  slots.replaceChildren();
+  for (let i = 0; i < 2; i++){
+    const v = d.videos[i];
+    if (!v){
+      if (i > d.videos.length) continue;
+      const e = document.createElement('div');
+      e.className = 'reelslot empty'; e.tabIndex = 0; e.setAttribute('role', 'button');
+      e.innerHTML = `<span><b>+</b>Add reel ${i + 1}</span>`;
+      e.setAttribute('aria-label', `Add reel ${i + 1}`);
+      const pick = () => { reelTarget = i; $('reelFile').click(); };
+      e.addEventListener('click', pick);
+      e.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); pick(); } });
+      slots.append(e);
+      continue;
+    }
+    const box = document.createElement('div'); box.className = 'reelslot';
+    const vid = document.createElement('video');
+    vid.muted = true; vid.loop = true; vid.playsInline = true; vid.setAttribute('playsinline', ''); vid.preload = 'metadata'; vid.controls = true;
+    if (v.posterData) box.style.backgroundImage = `url("${v.posterData.dataUrl}")`;
+    if (v.url) vid.src = v.url;
+    else reelSrc(v.file).then(u => { vid.src = u; }).catch(() => {});
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const badge = (cls, txt) => { const s = document.createElement('span'); s.className = 'badge ' + cls; s.textContent = txt; meta.append(s); };
+    if (v.newFile){ badge('n', 'New'); badge('f', mb(v.newFile.size)); }
+    (v.warn || []).forEach(w => badge('w', w));
+    const tools = document.createElement('div'); tools.className = 'rtools';
+    const mk = (txt, label, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.title = label; b.setAttribute('aria-label', label); if (cls) b.className = cls; b.addEventListener('click', fn); tools.append(b); };
+    mk('Replace', `Replace reel ${i + 1}`, () => { reelTarget = i; $('reelFile').click(); });
+    if (d.videos.length > 1) mk('⇄', 'Swap the order of the reels', () => { d.videos.reverse(); renderDrop(); });
+    mk('Remove', `Remove reel ${i + 1}`, () => { d.videos.splice(i, 1); renderDrop(); }, 'del');
+    box.append(vid, meta, tools);
+    slots.append(box);
+  }
+  const b = draftFrom(dropBase.data);
+  const sameReels = d.videos.map(v => v.newFile ? '+' : v.file).sort().join('|') === b.videos.map(v => v.file).sort().join('|');
+  $('dropReshowRow').hidden = !dropBase.data || !sameReels;     /* new reels are a new drop anyway */
+  $('dropReshow').checked = d.reshow;
+  const bad = dropProblem();
+  $('dropErr').textContent = bad; $('dropErr').hidden = !bad;
+  updateBar();
+}
+function readAsDataURL(f){
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsDataURL(f); });
+}
+/* HEVC (the iPhone camera's default) plays in Safari but not in Chrome on Windows or in Firefox */
+async function isHEVC(f){
+  const look = async (a, b) => {
+    const u = new Uint8Array(await f.slice(a, b).arrayBuffer());
+    for (let i = 0; i + 3 < u.length; i++)
+      if (u[i] === 104 && ((u[i + 1] === 118 && u[i + 2] === 99 && u[i + 3] === 49) || (u[i + 1] === 101 && u[i + 2] === 118 && u[i + 3] === 49))) return true;  /* hvc1 / hev1 */
+    return false;
+  };
+  const S = 4 * 1048576;
+  return (await look(0, Math.min(f.size, S))) || (f.size > S && await look(Math.max(S, f.size - S), f.size));
+}
+/* a still frame, so the reel shows instantly while the video loads */
+function grabPoster(url){
+  return new Promise((res, rej) => {
+    const v = document.createElement('video');
+    const fail = setTimeout(() => rej(new Error('timed out')), 12000);
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+    v.addEventListener('loadeddata', () => { v.currentTime = Math.min(0.6, (v.duration || 2) / 3); }, { once: true });
+    v.addEventListener('seeked', () => {
+      try {
+        const sc = Math.min(1, 540 / v.videoWidth), c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * sc); c.height = Math.round(v.videoHeight * sc);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        let dataUrl = c.toDataURL('image/webp', 0.8), ext = 'webp';
+        if (!dataUrl.startsWith('data:image/webp')){ dataUrl = c.toDataURL('image/jpeg', 0.82); ext = 'jpg'; }
+        clearTimeout(fail); res({ dataUrl, ext });
+      } catch(e){ clearTimeout(fail); rej(e); }
+    }, { once: true });
+    v.addEventListener('error', () => { clearTimeout(fail); rej(new Error("can't decode")); }, { once: true });
+  });
+}
+async function addReel(i, f){
+  const err = msg => { $('dropErr').textContent = msg; $('dropErr').hidden = false; };
+  if (!f) return;
+  if (!/^video\//.test(f.type) && !/\.(mp4|mov|m4v|webm)$/i.test(f.name)) return err(`${f.name} isn't a video.`);
+  if (f.size > MAX_REEL) return err(`${f.name} is ${mb(f.size)} — GitHub's limit is 100 MB per file. Export it at 720p or trim it, then try again.`);
+  const v = { newFile: f, url: URL.createObjectURL(f), poster: null, posterData: null, warn: [] };
+  if (f.size > BIG_REEL) v.warn.push('Large: slow on mobile data');
+  try { if (await isHEVC(f)) v.warn.push('HEVC: may not play in Chrome/Firefox'); } catch(e){}
+  dropDraft.videos[Math.min(i, dropDraft.videos.length)] = v;
+  if (!dropBase.data && !dropDraft.active) dropDraft.active = true;   /* first reels: switch it on */
+  renderDrop();
+  try { v.posterData = await grabPoster(v.url); }
+  catch(e){ v.warn.push("Can't preview: may not play for visitors"); }
+  renderDrop();
+}
+
 function updateBar(){
   const p = pending();
   const blank = items.some(i => !i.removed && !i.name.trim());
-  $('publish').disabled = busy || !p.length || blank;
+  const dropBad = dropProblem();
+  $('publish').disabled = busy || !p.length || blank || !!dropBad;
   $('discard').disabled = busy || !p.length;
   if (busy) return;
   if (blank) setStatus('<span style="color:var(--clay)">Every design needs a name.</span>');
+  else if (dropBad) setStatus(`<span style="color:var(--clay)">${esc(dropBad)}</span>`);
   else if (p.length) setStatus(`<b>${p.length} unpublished change${p.length > 1 ? 's' : ''}</b> — ${esc(p.slice(0, 3).join(', '))}${p.length > 3 ? '…' : ''}`);
   else setStatus('Everything is published. <a href="./" target="_blank" rel="noopener">View the shop ↗</a>');
 }
@@ -1067,18 +1265,20 @@ async function publish(){
   try {
     const ref = await gh(repoPath(`/git/ref/heads/${CFG.branch}`));
     const head = ref.object.sha;
-    if (head !== base.sha && (await manifestAt(head)) !== base.text)
-      throw new Error('The design list changed on GitHub since this page loaded. Reload the page and redo your changes.');
+    if (head !== base.sha && ((await manifestAt(head)) !== base.text || (await textAt(DROP_FILE, head)) !== dropBase.text))
+      throw new Error('The designs or the new-drop pop-up changed on GitHub since this page loaded. Reload the page and redo your changes.');
     const headCommit = await gh(repoPath(`/git/commits/${head}`));
 
     const tree = [];
     const st = stamp();
     let n = 0;
-    const upload = async (dataUrl, path) => {
+    const uploadTo = async (dataUrl, full) => {
       const blob = await gh(repoPath('/git/blobs'), { method: 'POST', body: { content: dataUrl.split(',')[1], encoding: 'base64' } });
-      tree.push({ path: `${CFG.dir}/${path}`, mode: '100644', type: 'blob', sha: blob.sha });
+      tree.push({ path: full, mode: '100644', type: 'blob', sha: blob.sha });
     };
-    const drop = path => tree.push({ path: `${CFG.dir}/${path}`, mode: '100644', type: 'blob', sha: null });
+    const removeAt = full => tree.push({ path: full, mode: '100644', type: 'blob', sha: null });
+    const upload = (dataUrl, path) => uploadTo(dataUrl, `${CFG.dir}/${path}`);
+    const drop = path => removeAt(`${CFG.dir}/${path}`);
     for (const it of items){
       if (it.removed){
         if (!it.isNew){ drop(it.file); if (it.back) drop(it.back); }   /* a removed design takes its back with it */
@@ -1107,9 +1307,42 @@ async function publish(){
     const text = JSON.stringify(kept.map(i => ({ file: i.newFile || i.file, name: i.name.trim(), ...(i.finalBack ? { back: i.finalBack } : {}) })), null, 2) + '\n';
     tree.push({ path: `${CFG.dir}/manifest.json`, mode: '100644', type: 'blob', content: text });
 
+    /* the new-drop pop-up: reels, their preview frames and drops/drop.json */
+    let dropText = dropBase.text, dropChanged = false;
+    if (dropChanges().length){
+      dropChanged = true;
+      const d = dropDraft, was = draftFrom(dropBase.data), finalVideos = [];
+      for (let k = 0; k < d.videos.length; k++){
+        const v = d.videos[k];
+        if (!v.newFile){ finalVideos.push({ file: v.file, poster: v.poster }); continue; }
+        const ext = ((v.newFile.name.match(/\.(mp4|mov|m4v|webm)$/i) || [0, 'mp4'])[1]).toLowerCase();
+        const file = `reel-${st}-${k + 1}.${ext}`;
+        setStatus(`<span class="spin"></span>Uploading reel ${k + 1} (${mb(v.newFile.size)}) — big videos can take a minute on mobile data…`);
+        await uploadTo(await readAsDataURL(v.newFile), `${DROPS_DIR}/${file}`);
+        reelUrls.set(file, v.url);
+        let poster = null;
+        if (v.posterData){ poster = `reel-${st}-${k + 1}.${v.posterData.ext}`; await uploadTo(v.posterData.dataUrl, `${DROPS_DIR}/${poster}`); }
+        finalVideos.push({ file, poster });
+      }
+      for (const ov of was.videos) if (!finalVideos.some(f => f.file === ov.file)){
+        removeAt(`${DROPS_DIR}/${ov.file}`); if (ov.poster) removeAt(`${DROPS_DIR}/${ov.poster}`);
+      }
+      /* only different reels make a new drop; just swapping their order doesn't */
+      const reelsChanged = was.videos.map(v => v.file).sort().join('|') !== finalVideos.map(v => v.file).sort().join('|');
+      /* a new id is what makes visitors who saw the last drop see this one */
+      const id = !dropBase.data || reelsChanged || d.reshow ? `drop-${st}` : dropBase.data.id;
+      dropText = JSON.stringify({
+        id, active: d.active, title: d.title.trim() || 'New drop',
+        ...(d.caption.trim() ? { caption: d.caption.trim() } : {}),
+        ...(d.link.trim() ? { link: d.link.trim() } : {}),
+        videos: finalVideos.map(v => ({ file: v.file, ...(v.poster ? { poster: v.poster } : {}) })),
+      }, null, 2) + '\n';
+      tree.push({ path: DROP_FILE, mode: '100644', type: 'blob', content: dropText });
+    }
+
     setStatus('<span class="spin"></span>Saving to GitHub…');
     const t = await gh(repoPath('/git/trees'), { method: 'POST', body: { base_tree: headCommit.tree.sha, tree } });
-    const message = 'Admin: ' + (changes.length === 1 ? changes[0] : changes.length + ' design changes') + '\n\n' + changes.map(c => '- ' + c).join('\n');
+    const message = 'Admin: ' + (changes.length === 1 ? changes[0] : changes.length + ' changes') + '\n\n' + changes.map(c => '- ' + c).join('\n');
     const c = await gh(repoPath('/git/commits'), { method: 'POST', body: { message, tree: t.sha, parents: [head] } });
     try {
       await gh(repoPath(`/git/refs/heads/${CFG.branch}`), { method: 'PATCH', body: { sha: c.sha, force: false } });
@@ -1119,11 +1352,13 @@ async function publish(){
     }
 
     base = { sha: c.sha, text };
+    dropBase = { text: dropText, data: dropText ? JSON.parse(dropText) : null };
+    resetDropDraft();
     items = kept.map(i => ({ ...fromManifest({ file: i.newFile || i.file, name: i.name.trim(), back: i.finalBack }),
       dataUrl: i.frontNew ? i.frontNew.dataUrl : i.dataUrl, backDataUrl: i.backNew ? i.backNew.dataUrl : (i.finalBack ? i.backDataUrl : null) }));
     busy = false;
     render();
-    waitForLive(text);
+    waitForLive(text, dropChanged ? dropText : null);
   } catch(e){
     busy = false; updateBar();
     setStatus(`<span style="color:var(--clay)">Publish failed: ${esc(e.message)}</span>`);
@@ -1132,15 +1367,21 @@ async function publish(){
 }
 
 /* poll the live site's manifest until the new version is being served */
-async function waitForLive(text){
+async function waitForLive(text, dropText){
   const want = JSON.stringify(JSON.parse(text));
+  const wantDrop = dropText ? JSON.stringify(JSON.parse(dropText)) : null;
   setStatus('<span class="spin"></span><b>Published.</b> The site is redeploying — usually about a minute…');
   for (let i = 0; i < 40; i++){
     await new Promise(r => setTimeout(r, 6000));
     if (base.text !== text) return;            /* a newer publish took over */
     try {
       const r = await fetch(`${CFG.dir}/manifest.json`, { cache: 'no-store' });
-      if (r.ok && JSON.stringify(JSON.parse(await r.text())) === want){
+      let dropLive = true;
+      if (wantDrop){
+        const rd = await fetch(DROP_FILE, { cache: 'no-store' });
+        dropLive = rd.ok && JSON.stringify(JSON.parse(await rd.text())) === wantDrop;
+      }
+      if (r.ok && dropLive && JSON.stringify(JSON.parse(await r.text())) === want){
         setStatus('<b class="ok">✓ Live on the site.</b> <a href="./" target="_blank" rel="noopener">View the shop ↗</a> (hard-refresh if it was already open)');
         return;
       }
@@ -1187,9 +1428,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('be').h
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 
 $('publish').addEventListener('click', publish);
+$('dropOn').addEventListener('change', () => { dropDraft.active = $('dropOn').checked; renderDrop(); });
+$('dropTitleIn').addEventListener('input', () => { dropDraft.title = $('dropTitleIn').value; renderDrop(); });
+$('dropCapIn').addEventListener('input', () => { dropDraft.caption = $('dropCapIn').value; renderDrop(); });
+$('dropLinkIn').addEventListener('input', () => { dropDraft.link = $('dropLinkIn').value; renderDrop(); });
+$('dropReshow').addEventListener('change', () => { dropDraft.reshow = $('dropReshow').checked; renderDrop(); });
+$('reelFile').addEventListener('change', () => { const f = $('reelFile').files[0]; $('reelFile').value = ''; addReel(reelTarget, f); });
 $('discard').addEventListener('click', () => {
   if (!confirm('Discard all unpublished changes?')) return;
   items = JSON.parse(base.text).map(fromManifest);
+  resetDropDraft();
   render();
 });
 window.addEventListener('beforeunload', e => { if (pending().length){ e.preventDefault(); e.returnValue = ''; } });
