@@ -1042,7 +1042,7 @@ footer .r{font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.22
     </div>
     <div class="drop-actions">
       <button class="go" id="dropShop" type="button">Step into the shop</button>
-      <a id="dropLink" target="_blank" rel="noopener" hidden>Watch on Instagram ↗</a>
+      <a id="dropLink" target="_blank" rel="noopener">Explore our Instagram ↗</a>
     </div>
   </div>
 </div>
@@ -1685,10 +1685,11 @@ function buildDrop(d){
   document.getElementById('dropTag').hidden = /^new drop$/i.test(title);   /* don't say it twice */
   const cap = document.getElementById('dropCap');
   cap.textContent = d.caption || ''; cap.hidden = !d.caption;
-  const link = document.getElementById('dropLink');
-  const okLink = typeof d.link === 'string' && /^https:\/\//.test(d.link);
-  if (okLink) link.href = d.link;
-  link.hidden = !okLink;
+  /* the brand's Instagram page; until it's set in admin, the same place the
+     site's "Follow the exhibition on Instagram" banner goes */
+  const insta = typeof d.instagram === 'string' && /^https:\/\//.test(d.instagram)
+    ? d.instagram : document.querySelector('.insta-banner').href;
+  document.getElementById('dropLink').href = insta;
   reelsEl.replaceChildren(); dotsEl.replaceChildren();
   reelView.classList.toggle('single', d.videos.length === 1);
   document.getElementById('reelHint').textContent = isTouch ? 'Swipe up for the next reel ↑' : 'Scroll for the next reel ↓';
@@ -1708,9 +1709,8 @@ function buildDrop(d){
     snd.addEventListener('click', e => { e.stopPropagation(); toggleSound(vid, snd); });
     if (!reduceMotion) vid.addEventListener('click', () => toggleSound(vid, snd));
     const nope = document.createElement('div'); nope.className = 'nope';
-    nope.innerHTML = okLink ? 'This video can\'t play in your browser. <a target="_blank" rel="noopener">Watch it on Instagram ↗</a>'
-                            : 'This video can\'t play in your browser.';
-    if (okLink) nope.querySelector('a').href = d.link;
+    nope.innerHTML = 'This video can\'t play in your browser. <a target="_blank" rel="noopener">Explore our Instagram ↗</a>';
+    nope.querySelector('a').href = insta;
     vid.addEventListener('error', () => box.classList.add('broken'));
     box.append(vid, snd, nope);
     reelsEl.append(box);

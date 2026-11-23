@@ -278,10 +278,10 @@ input[type=url]{background:#0d0f0b;border:1px solid var(--line);color:var(--ink)
       <div class="dropfields">
         <div class="field"><label for="dropTitleIn">Title</label><input type="text" id="dropTitleIn" maxlength="40" placeholder="New drop"></div>
         <div class="field"><label for="dropCapIn">Caption <span class="opt">(optional)</span></label><input type="text" id="dropCapIn" maxlength="140" placeholder="Two new tees, live now."></div>
-        <div class="field"><label for="dropLinkIn">Instagram link <span class="opt">(optional)</span></label><input type="url" id="dropLinkIn" inputmode="url" placeholder="https://www.instagram.com/reel/…"></div>
+        <div class="field"><label for="dropLinkIn">Instagram page <span class="opt">(for “Explore our Instagram”)</span></label><input type="url" id="dropLinkIn" inputmode="url" placeholder="https://www.instagram.com/yourname/"></div>
       </div>
       <div class="reelslots" id="reelSlots"></div>
-      <p class="help" style="font-size:.8rem">MP4 works everywhere. iPhone tip: set <b>Settings → Camera → Formats</b> to <b>Most Compatible</b>, or save the reel from Instagram/CapCut as MP4. Up to 100 MB each; under 25 MB loads fast on phones.</p>
+      <p class="help" style="font-size:.8rem">The pop-up always has an <b>Explore our Instagram</b> button. It goes to the Instagram page above; leave it empty and it uses the same link as the shop's “Follow the exhibition on Instagram” banner. MP4 works everywhere. iPhone tip: set <b>Settings → Camera → Formats</b> to <b>Most Compatible</b>, or save the reel from Instagram/CapCut as MP4. Up to 100 MB each; under 25 MB loads fast on phones.</p>
       <label class="check" id="dropReshowRow"><input type="checkbox" id="dropReshow"><span>Show it again to visitors who've already seen it</span></label>
       <p class="err" id="dropErr" hidden></p>
       <input type="file" id="reelFile" accept="video/mp4,video/quicktime,video/webm,video/*" hidden>
@@ -1105,7 +1105,7 @@ async function textAt(path, sha){
 }
 function draftFrom(d){
   return {
-    active: !!(d && d.active), title: (d && d.title) || 'New drop', caption: (d && d.caption) || '', link: (d && d.link) || '', reshow: false,
+    active: !!(d && d.active), title: (d && d.title) || 'New drop', caption: (d && d.caption) || '', link: (d && d.instagram) || '', reshow: false,
     videos: d && Array.isArray(d.videos) ? d.videos.map(v => ({ file: v.file, poster: v.poster || null })) : [],
   };
 }
@@ -1132,7 +1132,9 @@ function dropProblem(){
   const d = dropDraft;
   if (!d) return '';
   if (d.active && !d.videos.length) return 'Add at least one reel, or switch the new-drop pop-up off.';
-  if (d.link.trim() && !/^https:\/\/\S+$/.test(d.link.trim())) return 'The Instagram link should start with https://';
+  const ig = d.link.trim();
+  if (ig && !/^https:\/\/\S+$/.test(ig)) return 'The Instagram page link should start with https://';
+  if (/instagram\.com\/(reels?|p|tv|stories)\//i.test(ig)) return 'That links to a single post or reel — paste your Instagram page instead, like https://www.instagram.com/yourname/';
   return '';
 }
 async function reelSrc(file){
@@ -1334,7 +1336,7 @@ async function publish(){
       dropText = JSON.stringify({
         id, active: d.active, title: d.title.trim() || 'New drop',
         ...(d.caption.trim() ? { caption: d.caption.trim() } : {}),
-        ...(d.link.trim() ? { link: d.link.trim() } : {}),
+        ...(d.link.trim() ? { instagram: d.link.trim() } : {}),
         videos: finalVideos.map(v => ({ file: v.file, ...(v.poster ? { poster: v.poster } : {}) })),
       }, null, 2) + '\n';
       tree.push({ path: DROP_FILE, mode: '100644', type: 'blob', content: dropText });
